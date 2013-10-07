@@ -18,8 +18,11 @@ endif
 ifndef GATK_JAR
 GATK_JAR=$(GATK_HOME)/GenomeAnalysisTK.jar
 endif
+ifndef GATK_JAVA_TMPDIR
+GATK_JAVA_TMPDIR=.
+endif
 ifndef GATK_COMMAND
-GATK_COMMAND=java -Xmx$(GATK_JAVA_MEM) -jar $(GATK_JAR)
+GATK_COMMAND=java -Xmx$(GATK_JAVA_MEM) -Djava.io.tmpdir=$(GATK_JAVA_TMPDIR) -jar $(GATK_JAR)
 endif
 ifndef GATK_REF
 GATK_REF=$(REF)
@@ -76,3 +79,6 @@ endif
 
 all.vcf: $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
 	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) $(addprefix -I , $(GATK_BAM_LIST)) -o $@.tmp && mv $@.tmp $@
+
+all.phased.vcf: all.vcf $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKED_PHASING) $(addprefix -I , $(GATK_BAM_LIST)) --variant $< -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@

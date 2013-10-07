@@ -58,14 +58,17 @@ ifneq ($(SLURM_HEADER,"")
 endif
 	echo -e "\n\n#" `date` >> $@ 
 ifneq ($(SLURM_STEM),"")
-	echo -e make $(SLURM_STEM) >> $@
+	echo -e $(MAKE) $(SLURM_STEM) >> $@
 else
-	echo -e make $*.log >> $@
+	echo -e $(MAKE) $*.log >> $@
 endif
 	echo sbatch $@
 endif
 
+.PHONY: *.log
 # logging
 %.log:
 	echo -e "\n\n"`date`"\n\n" | tee -a $@
 	$(MAKE) $* | tee -a $@
+
+

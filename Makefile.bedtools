@@ -1,0 +1,18 @@
+#-*- makefile -*-
+
+#
+# bedtools makefile settings
+# 
+ifndef BEDTOOLS_HOME
+BEDTOOLS_HOME=.
+endif
+ifndef BEDTOOLS_OPTIONS
+BEDTOOLS_OPTIONS=
+endif
+ifndef BEDTOOLS_BFILE
+BEDTOOLS_BFILE=
+endif
+
+# coverageBed
+%.coverage: %.bam
+	$(BEDTOOLS_HOME)/coverageBed $(BEDTOOLS_OPTIONS) -abam $< -b $(BEDTOOLS_BFILE) > $@.tmp && mv $@.tmp $@

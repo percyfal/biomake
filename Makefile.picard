@@ -16,8 +16,11 @@ endif
 ifndef PICARD_JAVA_MEM
 PICARD_JAVA_MEM=$(JAVA_MEM)
 endif
+ifndef PICARD_JAVA_TMPDIR
+PICARD_JAVA_TMPDIR=.
+endif
 ifndef PICARD_JAVA
-PICARD_JAVA=java -Xmx$(PICARD_JAVA_MEM) -jar 
+PICARD_JAVA=java -Xmx$(PICARD_JAVA_MEM) -Djava.io.tmpdir=$(PICARD_JAVA_TMPDIR) -jar 
 endif
 ifndef PICARD_REF
 PICARD_REF=$(REF)
@@ -39,4 +42,11 @@ endif
 	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@
 
 %.dup.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) M=$(@:.bam=).dup_metrics
+	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
+
+%.interval_list: $(PICARD_REF)
+	$(PICARD_JAVA) $(PICARD_HOME)/CreateSequenceDictionary.jar R=$< O=$@.tmp && mv $@.tmp $@
+
+%.interval_list: %.bed $(subst .fa,.interval_list,$(PICARD_REF))
+	$(CAT) $(lastword $^) > $@.tmp
+	$(AWK) '{printf("%s\t%s\t%s\t%s\t%s\n", $$1,$$2,$$3,"+",$$4)}' $< >> $@.tmp && mv $@.tmp $@
