@@ -1,0 +1,92 @@
+#-*- makefile -*-
+
+# Angsd search path. Since some of the programs are located in the
+# misc subfolder, use absolute search path. The user must set this
+# variable in the makefile that includes this file, or else set the
+# executable variables below.
+ifndef ANGSD_PATH
+ANGSD_PATH=.
+endif
+
+# Angsd executable
+ifndef ANGSD
+ANGSD=$(ANGSD_PATH)/angsd
+endif
+# emoptim executable
+ifndef EMOPTIM
+EMOPTIM=$(ANGSD_PATH)/misc/emOptim
+endif
+# emoptim2 executable
+ifndef EMOPTIM2
+EMOPTIM2=$(ANGSD_PATH)/misc/emOptim2
+endif
+# optimSFS executable
+ifndef OPTIMSFS
+OPTIMSFS=$(ANGSD_PATH)/misc/optimSFS
+endif
+# bgid executable
+ifndef BGID
+BGID=$(ANGSD_PATH)/misc/bgid
+endif
+
+##############################
+# Program options
+##############################
+# GL option - use GATK model by default
+ifndef ANGSD_OPTION_GL
+ANGSD_OPTION_GL=2
+endif
+# Maf option - use option 10 by default (EM unknown + EM known minor)
+ifndef ANGSD_OPTION_MAF
+ANGSD_OPTION_MAF=10
+endif
+# MajorMinor - 5 default (major is ancestral, minor inferred from Genotype Likelihoods)
+#
+# NB: if the ancestral is not in the inferred (major/minor) tuple, the
+# site is discarded
+ifndef ANGSD_OPTION_MAJORMINOR
+ANGSD_OPTION_MAJORMINOR=5
+endif
+# Option realsfs
+ifndef ANGSD_OPTION_REALSFS
+ANGSD_OPTION_REALSFS=1
+endif
+# Ancestral file
+# Set to empty here; will throw error
+ifndef ANGSD_OPTION_ANC
+ANGSD_OPTION_ANC=
+endif
+# Precious files
+.PRECIOUS: *.em.ml
+
+# Create SFS file
+#
+# Requirement: here a bam list text file (i.e. names and locations of
+# bam files for population)
+ifndef ANGSD_OPTION_SFS
+ANGSD_OPTION_SFS=-realSFS 1 -GL $(ANGSD_OPTION_GL)
+endif
+%.sfs: %.list
+	$(ANGSD) $(ANGSD_OPTION_SFS) -bam $< -out $(@:.sfs=).tmp && mv $(@:.sfs=).tmp.sfs $@
+
+# Several rules for generating ML-estimate of sfs. Need to set a sfs optimization program variable
+# 1. emOptim
+%.sfs.em.ml: %.sfs
+	$(EMOPTIM) -binput $< -nChr $(ANGSD_OPTION_NCHR) -maxIter $(ANGSD_OPTION_EMOPTIM_MAXITER) > $@.tmp && mv $@.tmp $@
+# Add emOptim2, optimSFS here
+
+# doThetas
+# Generate thetas files
+ifndef ANGSD_OPTION_THETAS
+ANGSD_OPTION_THETAS=-realSFS 1 -GL $(ANGSD_OPTION_GL) -anc $(ANGSD_OPTION_ANC)
+endif
+%.thetas.gz: %.sfs.em.ml
+	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
+
+
+# doMafs
+ifndef ANGSD_OPTION_DOMAFS
+ANGSD_OPTION_DOMAFS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJORMINOR) -doMaf $(ANGSD_OPTION_MAF)
+endif
+%.mafs.gz: %.list
+	$(ANGSD) $(ANGSD_OPTION_DOMAFS) -bam $< -out $(@:mafs.gz=).tmp && mv $@.tmp.mafs.gz $@
