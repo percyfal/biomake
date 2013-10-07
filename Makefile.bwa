@@ -1,0 +1,26 @@
+#-*- makefile -*-
+
+#
+# bwa makefile rules
+# 
+
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+include $(MAKEDIR)/Makefile.ngsvars
+include $(MAKEDIR)/Makefile.samtools
+
+# bwa
+ifndef BWA
+BWA=bwa
+endif
+ifndef BWA_THREADS
+BWA_THREADS=$(THREADS)
+endif
+ifndef BWA_OPTIONS
+BWA_OPTIONS=-t $(BWA_THREADS)
+endif
+ifndef BWA_REF
+BWA_REF=$(REF)
+endif
+
+%.bam: %_R1_001.fastq.gz %_R2_001.fastq.gz
+	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@

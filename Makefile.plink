@@ -1,0 +1,18 @@
+#-*- makefile -*-
+
+#
+# plink makefile rules
+# 
+
+ifndef PLINK
+PLINK=plink
+endif
+ifndef PLINK_OPTIONS_COMMON
+PLINK_OPTIONS_COMMON=--noweb
+endif
+ifndef PLINK_OPTIONS
+PLINK_OPTIONS=
+endif
+
+%.ld: %.ped
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --r2

@@ -1,0 +1,24 @@
+#-*- makefile -*-
+
+#
+# ngs variable settings
+# 
+ifndef REF
+REF=
+endif
+
+ifndef JAVA_MEM
+JAVA_MEM=6g
+endif
+
+ifndef THREADS
+THREADS=8
+endif
+
+ifndef DBSNP
+DBSNP=
+endif
+
+ifndef TARGET_REGIONS
+TARGET_REGIONS=
+endif

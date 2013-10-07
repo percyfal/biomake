@@ -1,0 +1,78 @@
+#-*- makefile -*-
+
+#
+# GATK makefile rules
+# 
+
+# http://blog.jgc.org/2007/01/what-makefile-am-i-in.html
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+include $(MAKEDIR)/Makefile.ngsvars
+
+# GATK_HOME variable
+ifndef GATK_HOME
+GATK_HOME=.
+endif
+ifndef GATK_JAVA_MEM
+GATK_JAVA_MEM=$(JAVA_MEM)
+endif
+ifndef GATK_JAR
+GATK_JAR=$(GATK_HOME)/GenomeAnalysisTK.jar
+endif
+ifndef GATK_COMMAND
+GATK_COMMAND=java -Xmx$(GATK_JAVA_MEM) -jar $(GATK_JAR)
+endif
+ifndef GATK_REF
+GATK_REF=$(REF)
+endif
+ifndef GATK_DBSNP
+GATK_DBSNP=$(DBSNP)
+endif
+ifndef GATK_TARGET_REGIONS
+GATK_TARGET_REGIONS=$(TARGET_REGIONS)
+endif
+
+# Generic program options
+ifndef GATK_OPTION_THREADS
+GATK_OPTION_THREADS=$(THREADS)
+endif
+
+ifndef GATK_OPTION_UNIFIEDGENOTYPER
+GATK_OPTION_UNIFIEDGENOTYPER=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_OPTION_THREADS) -R $(GATK_REF)
+ifneq ($(GATK_DBSNP), "")
+GATK_OPTION_UNIFIEDGENOTYPER+=--dbsnp $(GATK_DBSNP)
+endif
+ifneq ($(GATK_TARGET_REGIONS), "")
+GATK_OPTION_UNIFIEDGENOTYPER+=-L $(GATK_TARGET_REGIONS)
+endif
+endif
+
+##############################
+# Generic bam rules
+# 
+# The following rules have as requirement any bam file
+##############################
+
+# Read Backed Phasing
+ifndef GATK_OPTION_READBACKEDPHASING
+GATK_OPTION_READBACKEDPHASING=
+endif
+ifndef GATK_OPTION_VCFSUFFIX
+GATK_OPTION_VCFSUFFIX=.vcf
+endif
+%.phased.vcf: %.bam %.bai
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKED_PHASING) -I $< --variant $*$(GATK_OPTION_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
+
+
+##############################
+# Multi-sample variant calling
+# 
+# Requires a variable GATK_BAM_LIST that contains the bam file
+# requirements
+# Output names are specific
+##############################
+ifndef GATK_BAM_LIST
+GATK_BAM_LIST:=
+endif
+
+all.vcf: $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
+	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) $(addprefix -I , $(GATK_BAM_LIST)) -o $@.tmp && mv $@.tmp $@

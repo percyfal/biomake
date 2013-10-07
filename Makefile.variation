@@ -1,0 +1,16 @@
+#-*- makefile -*-
+
+#
+# variation analysis makefile rules
+# 
+
+# vcftools
+ifndef VCFTOOLS
+VCFTOOLS=vcftools
+endif
+ifndef VCFTOOLS_OPTIONS
+VCFTOOLS_OPTIONS=
+endif
+
+%.ped: %.vcf
+	$(VCFTOOLS) $(VCFTOOLS_OPTIONS) --vcf $< --plink --out $*.tmp && mv $*.tmp.ped $@

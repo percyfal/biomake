@@ -1,5 +1,8 @@
 #-*- makefile -*-
 
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+include $(MAKEDIR)/Makefile.ngsvars
+
 # Angsd search path. Since some of the programs are located in the
 # misc subfolder, use absolute search path. The user must set this
 # variable in the makefile that includes this file, or else set the
@@ -54,7 +57,7 @@ endif
 # Ancestral file
 # Set to empty here; will throw error
 ifndef ANGSD_OPTION_ANC
-ANGSD_OPTION_ANC=
+ANGSD_OPTION_ANC=$(REF)
 endif
 # Precious files
 .PRECIOUS: *.em.ml

@@ -1,0 +1,25 @@
+#-*- makefile -*-
+
+#
+# samtools makefile rules
+# 
+
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+include $(MAKEDIR)/Makefile.ngsvars
+
+# samtools
+ifndef SAMTOOLS
+SAMTOOLS=samtools
+endif
+ifndef SAMTOOLS_THREADS
+SAMTOOLS_THREADS=$(THREADS)
+endif
+ifndef SAMTOOLS_OPTIONS
+SAMTOOLS_OPTIONS=
+endif
+ifndef SAMTOOLS_REF
+SAMTOOLS_REF=$(REF)
+endif
+
+%.bam: %.sam
+	$(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
