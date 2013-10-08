@@ -31,7 +31,13 @@ endif
 ifndef BGID
 BGID=$(ANGSD_PATH)/misc/bgid
 endif
-
+# calcstat executable
+ifndef CALCSTAT
+CALCSTAT=$(ANGSD_PATH)/misc/calcStat
+endif
+ifndef ANGSD_OPTION_NTHREADS
+ANGSD_OPTION_NTHREADS=$(THREADS)
+endif
 ##############################
 # Program options
 ##############################
@@ -59,6 +65,24 @@ endif
 ifndef ANGSD_OPTION_ANC
 ANGSD_OPTION_ANC=$(REF)
 endif
+
+# Window sizes and steps for thetas calculations
+ifndef ANGSD_OPTION_WINDOW
+ANGSD_OPTION_WINDOW=50000
+endif
+
+ifndef ANGSD_OPTION_STEP
+ANGSD_OPTION_STEP=50000
+endif
+
+ifndef ANGSD_OPTION_MAXITER
+ANGSD_OPTION_MAXITER=100
+endif
+
+ifndef ANGSD_OPTION_NCHR
+ANGSD_OPTION_NCHR=
+endif
+
 # Precious files
 .PRECIOUS: %.em.ml %.em2.ml
 
@@ -67,29 +91,85 @@ endif
 # Requirement: here a bam list text file (i.e. names and locations of
 # bam files for population)
 ifndef ANGSD_OPTION_SFS
-ANGSD_OPTION_SFS=-realSFS 1 -GL $(ANGSD_OPTION_GL)
+ANGSD_OPTION_SFS=-realSFS 1 -GL $(ANGSD_OPTION_GL) -anc $(ANGSD_OPTION_ANC) -nThreads $(ANGSD_OPTION_NTHREADS)
 endif
 %.sfs: %.list
 	$(ANGSD) $(ANGSD_OPTION_SFS) -bam $< -out $(@:.sfs=).tmp && mv $(@:.sfs=).tmp.sfs $@
 
 # Several rules for generating ML-estimate of sfs. Need to set a sfs optimization program variable
-# 1. emOptim
+# 1. emOptim2
+ifndef ANGSD_OPTION_EMOPTIM2
+ANGSD_OPTION_EMOPTIM2=-maxIter $(ANGSD_OPTION_MAXITER) -P $(ANGSD_OPTION_NTHREADS)
+ifdef ANGSD_OPTION_TOLE
+ANGSD_OPTION_EMOPTIM2+=-tole $(ANGSD_OPTION_TOLE)
+endif
+ifdef ANGSD_OPTION_SITES
+ANGSD_OPTION_EMOPTIM2+=-nSites $(ANGSD_OPTION_SITES)
+endif
+endif
+%.sfs.em2.ml: %.sfs
+	$(EMOPTIM2) $< $(ANGSD_OPTION_NCHR) $(ANGSD_OPTION_EMOPTIM2) > $@.tmp && mv $@.tmp $@
+
+# 2. emOptim
+ifndef ANGSD_OPTION_EMOPTIM
+ANGSD_OPTION_EMOPTIM=-maxIter $(ANGSD_OPTION_MAXITER)
+endif
 %.sfs.em.ml: %.sfs
-	$(EMOPTIM) -binput $< -nChr $(ANGSD_OPTION_NCHR) -maxIter $(ANGSD_OPTION_EMOPTIM_MAXITER) > $@.tmp && mv $@.tmp $@
-# Add emOptim2, optimSFS here
+	$(EMOPTIM) -binput $< -nChr $(ANGSD_OPTION_NCHR) $(ANGSD_OPTION_EMOPTIM) > $@.tmp && mv $@.tmp $@
+
+# 3. optimSFS
+ifdef ANGSD_OPTION_OPTIMSFS
+ANGSD_OPTION_OPTIMSFS=
+endif
+%.sfs.ml: %.sfs
+	$(OPTIMSFS) -binput $< -nChr $(ANGSD_OPTION_NCH) -outnames $@.tmp && mv $@.tmp $@
 
 # doThetas
 # Generate thetas files
 ifndef ANGSD_OPTION_THETAS
-ANGSD_OPTION_THETAS=-realSFS 1 -GL $(ANGSD_OPTION_GL) -anc $(ANGSD_OPTION_ANC)
+ANGSD_OPTION_THETAS=-realSFS 1 -GL $(ANGSD_OPTION_GL) -anc $(ANGSD_OPTION_ANC) -doThetas 1 -nThreads $(ANGSD_OPTION_NTHREADS)
+ifdef ANGSD_OPTION_CHR
+ANGSD_OPTION_THETAS+=-r $(ANGSD_OPTION_CHR)
+endif
 endif
 %.thetas.gz: %.sfs.em.ml
 	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
 
+%.thetas.gz: %.sfs.em2.ml
+	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
 
 # doMafs
 ifndef ANGSD_OPTION_DOMAFS
-ANGSD_OPTION_DOMAFS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJORMINOR) -doMaf $(ANGSD_OPTION_MAF)
+ANGSD_OPTION_DOMAFS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJORMINOR) -doMaf $(ANGSD_OPTION_MAF) -GL $(ANGSD_OPTION_GL) -nThreads $(ANGSD_OPTION_NTHREADS)
 endif
 %.mafs.gz: %.list
-	$(ANGSD) $(ANGSD_OPTION_DOMAFS) -bam $< -out $(@:mafs.gz=).tmp && mv $@.tmp.mafs.gz $@
+	$(ANGSD) $(ANGSD_OPTION_DOMAFS) -bam $< -out $(@:.mafs.gz=).tmp && mv $(@:.mafs.gz=).tmp.mafs.gz $@
+
+# doCounts: Generate mpileup from show options
+ifndef ANGSD_OPTION_DOCOUNTS
+ANGSD_OPTION_DOCOUNTS=-realSFS 1 -show 1 -doCounts 1 -dumpCounts 2
+endif
+%.mpileup: %.txt
+	$(ANGSD) $(ANGSD_OPTION_SFS) -show 1 -bam $< -out $(@:.sfs=.mpileup).tmp && mv $@.tmp $@ 
+
+# bgid
+%.bin: %.thetas.gz
+	$(BGID) make_bed
+
+ifndef ANGSD_OPTION_BGID_DOSTAT
+ANGSD_OPTION_BGID_DOSTAT=-step $(ANGSD_OPTION_STEP) -win $(ANGSD_OPTION_WINDOW) -nChr $(ANGSD_OPTION_NCHR)
+endif
+%.thetas.gz.bgid_pestPG: %.thetas.gz %.thetas.gz.bin
+	$(BGID) do_stat $< $(ANGSD_OPTION_BGID_DOSTAT)
+
+
+##############################
+# ngsTools
+##############################
+
+ifndef NGSTOOLS_PATH
+NGSTOOLS_PATH=.
+endif
+ifndef NGSFST
+NGSFST=$(NGSTOOLS_PATH)/ngsFST
+endif
