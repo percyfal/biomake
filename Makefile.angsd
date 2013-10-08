@@ -60,7 +60,7 @@ ifndef ANGSD_OPTION_ANC
 ANGSD_OPTION_ANC=$(REF)
 endif
 # Precious files
-.PRECIOUS: *.em.ml
+.PRECIOUS: %.em.ml %.em2.ml
 
 # Create SFS file
 #
