@@ -15,4 +15,18 @@ PLINK_OPTIONS=
 endif
 
 %.ld: %.ped
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --r2
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --r2 --out $*
+
+%.ld: %.bed
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --r2 --out $*
+
+%.bed: %.ped
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --make-bed --out $*
+
+%.blocks: %.bed
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --blocks --out $*
+
+%.chr$(PLINK_CHR).bed: %.bed
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --chr $(PLINK_CHR) --make-bed --out $*.chr$(PLINK_CHR)
+
+

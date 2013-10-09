@@ -13,4 +13,6 @@ VCFTOOLS_OPTIONS=
 endif
 
 %.ped: %.vcf
-	$(VCFTOOLS) $(VCFTOOLS_OPTIONS) --vcf $< --plink --out $*.tmp && mv $*.tmp.ped $@
+	$(VCFTOOLS) $(VCFTOOLS_OPTIONS) --vcf $< --plink --out $*.tmp && mv $*.tmp.ped $@; mv $*.tmp.map $*.map
+
+

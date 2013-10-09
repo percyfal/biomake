@@ -63,8 +63,14 @@ ifndef GATK_OPTION_VCFSUFFIX
 GATK_OPTION_VCFSUFFIX=.vcf
 endif
 %.phased.vcf: %.bam %.bai
-	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKED_PHASING) -I $< --variant $*$(GATK_OPTION_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKEDPHASING) -I $< --variant $*$(GATK_OPTION_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
 
+# Select snp variants
+ifndef GATK_OPTION_SELECTSNPVARIANTS
+GATK_OPTION_SELECTSNPVARIANTS=--selectTypeToInclude SNP
+endif
+%.snp.vcf: %.vcf
+	$(GATK_COMMAND) -T SelectVariants $(GATK_OPTION_SELECTSNPVARIANTS) --variant $< --out $@.tmp -R $(GATK_REF) && mv $@.tmp $@
 
 ##############################
 # Multi-sample variant calling
@@ -81,4 +87,4 @@ all.vcf: $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
 	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) $(addprefix -I , $(GATK_BAM_LIST)) -o $@.tmp && mv $@.tmp $@
 
 all.phased.vcf: all.vcf $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
-	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKED_PHASING) $(addprefix -I , $(GATK_BAM_LIST)) --variant $< -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKEDPHASING) $(addprefix -I , $(GATK_BAM_LIST)) --variant $< -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@

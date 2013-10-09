@@ -147,10 +147,16 @@ endif
 
 # doCounts: Generate mpileup from show options
 ifndef ANGSD_OPTION_DOCOUNTS
-ANGSD_OPTION_DOCOUNTS=-realSFS 1 -show 1 -doCounts 1 -dumpCounts 2
+ANGSD_OPTION_DOCOUNTS=-doCounts 1 -dumpCounts 2 -anc $(ANGSD_OPTION_ANC)
 endif
-%.mpileup: %.txt
-	$(ANGSD) $(ANGSD_OPTION_SFS) -show 1 -bam $< -out $(@:.sfs=.mpileup).tmp && mv $@.tmp $@ 
+%.counts.gz: %.list
+	$(ANGSD) $(ANGSD_OPTION_DOCOUNTS) -bam $< -out $(@:.sfs=.counts.gz).tmp && mv $(@:.counts.gz=).tmp.counts.gz $@ 
+
+# add -show to get mpileup
+%.mpileup: %.list
+	$(ANGSD) $(ANGSD_OPTION_DOCOUNTS) -show 1 -bam $< -out $(@:.sfs=.mpileup).tmp && mv $(@:.mpileup=).tmp.mpileup $@ 
+
+
 
 # bgid
 %.bin: %.thetas.gz

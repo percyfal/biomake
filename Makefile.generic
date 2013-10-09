@@ -100,10 +100,11 @@ endif
 	$(SBATCH) $(SBATCH_OPTION) $@
 endif
 
-# logging
-%.log:
-	echo -e "\n\n"`date`"\n\n" | tee -a $@.tmp
-	$(MAKE) $* | tee -a $@.tmp && mv $@.tmp $@
-
 # Want %.log to run every time but this doesn't help?!?
 .PHONY: %.log
+
+# logging
+%.log:
+	echo -e "\n\n"`date`"\n\n" >> $@.tmp
+	$(MAKE) $* 2>&1 | tee -a $@.tmp && mv $@.tmp $@
+
