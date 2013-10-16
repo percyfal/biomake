@@ -50,3 +50,7 @@ endif
 %.interval_list: %.bed $(subst .fa,.interval_list,$(PICARD_REF))
 	$(CAT) $(lastword $^) > $@.tmp
 	$(AWK) '{printf("%s\t%s\t%s\t%s\t%s\n", $$1,$$2,$$3,"+",$$4)}' $< >> $@.tmp && mv $@.tmp $@
+
+# Metrics calculations
+%.insert_metrics: %.bam
+	$(PICARD_JAVA) $(PICARD_HOME)/CollectInsertSizeMetrics.jar H=$*.hist I=$< O=$@.tmp R=$(PICARD_REF) && mv $@.tmp $@

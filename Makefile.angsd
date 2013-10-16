@@ -84,7 +84,7 @@ ANGSD_OPTION_NCHR=
 endif
 
 # Precious files
-.PRECIOUS: %.em.ml %.em2.ml
+.PRECIOUS: %.em.ml %.em2.ml %_full.list %.list
 
 # Create SFS file
 #
@@ -132,35 +132,38 @@ ifdef ANGSD_OPTION_CHR
 ANGSD_OPTION_THETAS+=-r $(ANGSD_OPTION_CHR)
 endif
 endif
+
+%_$(ANGSD_OPTION_CHR).thetas.gz: %.sfs.em.ml %.list
+	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && rename $(@:.thetas.gz=).tmp $(@:.thetas.gz=) $(@:.thetas.gz=).tmp*
+
 %.thetas.gz: %.sfs.em.ml
-	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
+	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
 
 %.thetas.gz: %.sfs.em2.ml
-	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
+	$(ANGSD) $(ANGSD_OPTION_THETAS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
+
 
 # doMafs
 ifndef ANGSD_OPTION_DOMAFS
 ANGSD_OPTION_DOMAFS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJORMINOR) -doMaf $(ANGSD_OPTION_MAF) -GL $(ANGSD_OPTION_GL) -nThreads $(ANGSD_OPTION_NTHREADS)
 endif
 %.mafs.gz: %.list
-	$(ANGSD) $(ANGSD_OPTION_DOMAFS) -bam $< -out $(@:.mafs.gz=).tmp && mv $(@:.mafs.gz=).tmp.mafs.gz $@
+	$(ANGSD) $(ANGSD_OPTION_DOMAFS) -bam $< -out $(@:.mafs.gz=).tmp && rename $(@:.mafs.gz=).tmp $(@:.mafs.gz=) $(@:.mafs.gz=).tmp*
 
 # doCounts: Generate mpileup from show options
 ifndef ANGSD_OPTION_DOCOUNTS
 ANGSD_OPTION_DOCOUNTS=-doCounts 1 -dumpCounts 2 -anc $(ANGSD_OPTION_ANC)
 endif
 %.counts.gz: %.list
-	$(ANGSD) $(ANGSD_OPTION_DOCOUNTS) -bam $< -out $(@:.sfs=.counts.gz).tmp && mv $(@:.counts.gz=).tmp.counts.gz $@ 
+	$(ANGSD) $(ANGSD_OPTION_DOCOUNTS) -bam $< -out $(@:.sfs=.counts.gz).tmp && rename $(@:.counts.gz=).tmp $(@:.counts.gz=) $(@:.counts.gz=).tmp*
 
 # add -show to get mpileup
 %.mpileup: %.list
 	$(ANGSD) $(ANGSD_OPTION_DOCOUNTS) -show 1 -bam $< -out $(@:.sfs=.mpileup).tmp && mv $(@:.mpileup=).tmp.mpileup $@ 
 
-
-
 # bgid
-%.bin: %.thetas.gz
-	$(BGID) make_bed
+%.thetas.gz.bin: %.thetas.gz
+	$(BGID) make_bed $<
 
 ifndef ANGSD_OPTION_BGID_DOSTAT
 ANGSD_OPTION_BGID_DOSTAT=-step $(ANGSD_OPTION_STEP) -win $(ANGSD_OPTION_WINDOW) -nChr $(ANGSD_OPTION_NCHR)
@@ -179,3 +182,25 @@ endif
 ifndef NGSFST
 NGSFST=$(NGSTOOLS_PATH)/ngsFST
 endif
+
+##############################
+# GEM
+##############################
+ifndef GEM_PATH
+GEM_PATH=.
+endif
+
+# This is needed as GEM internally calls GEM programs
+export PATH := $(GEM_PATH):$(PATH)
+
+ifndef GEM_INDEXER_OPTIONS
+GEM_INDEXER_OPTIONS=-T 7
+endif
+%.gem: %.fasta
+	$(GEM_PATH)/gem-indexer $(GEM_INDEXER_OPTIONS) -i $< -o $*.tmp && mv $*.tmp.gem $@; mv $*.tmp.log $*.log
+
+ifndef GEM_MAPPABILITY_OPTIONS
+GEM_MAPPABILITY_OPTIONS=-l 100 -T 7
+endif
+%.mappability: %.gem
+	$(GEM_PATH)/gem-mappability $(GEM_MAPPABILITY_OPTIONS) -I $< -o $*.tmp && mv $*.tmp.mappability $@
