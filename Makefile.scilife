@@ -1,0 +1,353 @@
+#-*- makefile -*-
+#
+# File: Makefile.scilife
+#
+# Description: scilife pipeline Make rules
+#
+
+##################################################
+# SLURM interaction
+##################################################
+# sbatch submission
+ifndef SBATCH
+SBATCH=sbatch
+endif
+ifndef SBATCH_OPTION
+SBATCH_OPTION=
+endif
+# SLURM account empty by default - required in calling Makefile
+ifndef SLURM_ACCOUNT
+SLURM_ACCOUNT=
+endif
+# SLURM time - 1h default
+ifndef SLURM_TIME
+SLURM_TIME=01:00:00
+endif
+# SLURM N nodes
+ifndef SLURM_N_NODES
+SLURM_N_NODES=1
+endif
+# Extra header info. Put everything in variable.
+ifndef SLURM_EXTRA_HEADER
+SLURM_EXTRA_HEADER=
+endif
+# Jobname variable
+ifndef SLURM_JOBNAME
+SLURM_JOBNAME=
+endif
+# Workdir variable
+ifndef SLURM_WORKDIR
+SLURM_WORKDIR=
+endif
+# Mailtype variable
+ifndef SLURM_MAILTYPE
+SLURM_MAILTYPE=All
+endif
+# Mailuser variable
+ifndef SLURM_PARTITION
+SLURM_PARTITION=devel
+endif
+# Partition
+ifndef SLURM_MAILUSER
+SLURM_MAILUSER=
+endif
+# SLURM n cores
+ifndef SLURM_N_CORES
+SLURM_N_CORES=8
+ifeq ($(SLURM_PARTITION),core)
+SLURM_N_CORES=1
+endif
+endif
+
+%.sbatch:
+ifeq ($(SLURM_ACCOUNT),)
+	echo -e No SLURM_ACCOUNT defined; exiting!
+else
+	echo -e "#!/bin/bash -l" > $@ 
+	echo -e "#SBATCH" -p $(SLURM_PARTITION) >> $@ 
+ifeq ($(SLURM_PARTITION),halvan)
+	echo -e "#SBATCH" -M $(SLURM_PARTITION) >> $@
+endif
+	echo -e "#SBATCH" -A $(SLURM_ACCOUNT) >> $@ 
+	echo -e "#SBATCH" -n $(SLURM_N_CORES) >> $@ 
+ifeq ($(SLURM_PARTITION),node)
+	echo -e "#SBATCH" -N $(SLURM_N_NODES) >> $@ 
+endif
+	echo -e "#SBATCH" -t $(SLURM_TIME) >> $@ 
+ifneq ($(SLURM_JOBNAME),)
+	echo -e "#SBATCH" -J $(SLURM_JOBNAME) >> $@ 
+else
+	echo -e "#SBATCH" -J $* >> $@ 
+endif
+ifneq ($(SLURM_WORKDIR),)
+	echo -e "#SBATCH" -D $(SLURM_WORKDIR) >> $@
+endif
+ifneq ($(SLURM_EXTRA_HEADER),)
+	echo -e $(SLURM_EXTRA_HEADER) >> $@ 
+endif
+	echo -e "#SBATCH --mail-type="$(SLURM_MAILTYPE) >> $@
+ifneq ($(SLURM_MAILUSER),)
+	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@
+endif
+	echo -e "\n\n#" `date` >> $@ 
+	echo -e "\n\n"$(SLURM_PREHOOK) >> $@
+	echo -e $(MAKE) $*.log >> $@
+	$(SBATCH) $(SBATCH_OPTION) $@
+endif
+
+# logging
+%.log:
+	echo -e "\n\n"`date`"\n\n" >> $@.tmp
+	$(MAKE) $* 2>&1 | tee -a $@.tmp && mv $@.tmp $@
+
+
+##################################################
+# Sequencing configuration options, general
+##################################################
+ifndef REF
+REF=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa
+endif
+ifndef JAVA_MEM
+JAVA_MEM=6g
+endif
+ifndef THREADS
+THREADS=8
+endif
+ifndef DBSNP
+DBSNP=
+endif
+ifndef TARGET_REGIONS
+TARGET_REGIONS=
+endif
+# Utility programs
+ifndef AWK
+AWK=awk
+endif
+ifndef CAT
+CAT=cat
+endif
+
+##################################################
+# Samtools
+##################################################
+# samtools
+ifndef SAMTOOLS
+SAMTOOLS=samtools
+endif
+ifndef SAMTOOLS_THREADS
+SAMTOOLS_THREADS=$(THREADS)
+endif
+ifndef SAMTOOLS_OPTIONS
+SAMTOOLS_OPTIONS=
+endif
+ifndef SAMTOOLS_REF
+SAMTOOLS_REF=$(REF)
+endif
+
+%.bam: %.sam
+	$(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+
+##################################################
+# Picard
+##################################################
+.PRECIOUS: %.bai %.bam
+
+# PICARD_HOME variable
+ifndef PICARD_HOME
+PICARD_HOME=.
+endif
+ifndef PICARD_JAVA_MEM
+PICARD_JAVA_MEM=$(JAVA_MEM)
+endif
+ifndef PICARD_JAVA_TMPDIR
+PICARD_JAVA_TMPDIR=.
+endif
+ifndef PICARD_JAVA
+PICARD_JAVA=java -Xmx$(PICARD_JAVA_MEM) -Djava.io.tmpdir=$(PICARD_JAVA_TMPDIR) -jar 
+endif
+ifndef PICARD_REF
+PICARD_REF=$(REF)
+endif
+# Common options
+ifndef PICARD_OPTION_COMMON
+PICARD_OPTION_COMMON=VALIDATION_STRINGENCY=SILENT
+endif
+
+# Bam index
+%.bai: %.bam
+	$(PICARD_JAVA) $(PICARD_HOME)/BuildBamIndex.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) && mv $@.tmp $@
+
+ifndef PICARD_OPTION_SORTSAM
+PICARD_OPTION_SORTSAM=SORT_ORDER=coordinate
+endif
+%.sort.bam: %.bam
+	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@; 
+
+%.dup.bam: %.bam
+	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
+
+%.interval_list: $(PICARD_REF)
+	$(PICARD_JAVA) $(PICARD_HOME)/CreateSequenceDictionary.jar R=$< O=$@.tmp && mv $@.tmp $@
+
+%.interval_list: %.bed $(subst .fa,.interval_list,$(PICARD_REF))
+	$(CAT) $(lastword $^) > $@.tmp
+	$(AWK) '{printf("%s\t%s\t%s\t%s\t%s\n", $$1,$$2,$$3,"+",$$4)}' $< >> $@.tmp && mv $@.tmp $@
+
+%.rg.bam: %.bam
+	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
+	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
+	RGSM=$(firstword $(subst ., ,$*)) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@.bam=).bai
+
+# Metrics calculations
+%.insert_metrics: %.bam
+	$(PICARD_JAVA) $(PICARD_HOME)/CollectInsertSizeMetrics.jar H=$*.hist I=$< O=$@.tmp R=$(PICARD_REF) && mv $@.tmp $@
+
+
+##################################################
+# Alignment
+##################################################
+# bwa
+ifndef BWA
+BWA=bwa
+endif
+ifndef BWA_THREADS
+BWA_THREADS=$(THREADS)
+endif
+ifndef BWA_OPTIONS
+BWA_OPTIONS=-t $(BWA_THREADS)
+endif
+ifndef BWA_REF
+BWA_REF=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa
+endif
+
+%.bam: %_R1_001.fastq.gz %_R2_001.fastq.gz
+	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+##################################################
+# GATK
+##################################################
+# GATK_HOME variable
+ifndef GATK_HOME
+GATK_HOME=.
+endif
+ifndef GATK_JAVA_MEM
+GATK_JAVA_MEM=$(JAVA_MEM)
+endif
+ifndef GATK_JAR
+GATK_JAR=$(GATK_HOME)/GenomeAnalysisTK.jar
+endif
+ifndef GATK_JAVA_TMPDIR
+GATK_JAVA_TMPDIR=.
+endif
+ifndef GATK_COMMAND
+GATK_COMMAND=java -Xmx$(GATK_JAVA_MEM) -Djava.io.tmpdir=$(GATK_JAVA_TMPDIR) -jar $(GATK_JAR)
+endif
+ifndef GATK_REF
+GATK_REF=$(REF)
+endif
+ifndef GATK_DBSNP
+GATK_DBSNP=$(DBSNP)
+endif
+ifndef GATK_TARGET_REGIONS
+GATK_TARGET_REGIONS=$(TARGET_REGIONS)
+endif
+
+# Generic program options
+ifndef GATK_OPTION_THREADS
+GATK_OPTION_THREADS=$(THREADS)
+endif
+
+ifndef GATK_OPTION_UNIFIEDGENOTYPER
+GATK_OPTION_UNIFIEDGENOTYPER=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_OPTION_THREADS) -R $(GATK_REF)
+ifneq ($(GATK_DBSNP), "")
+GATK_OPTION_UNIFIEDGENOTYPER+=--dbsnp $(GATK_DBSNP)
+endif
+ifneq ($(GATK_TARGET_REGIONS), "")
+GATK_OPTION_UNIFIEDGENOTYPER+=-L $(GATK_TARGET_REGIONS)
+endif
+endif
+
+##############################
+# Generic bam rules
+# 
+# The following rules have as requirement any bam file
+##############################
+
+# Read Backed Phasing
+ifndef GATK_OPTION_READBACKEDPHASING
+GATK_OPTION_READBACKEDPHASING=
+endif
+ifndef GATK_OPTION_VCFSUFFIX
+GATK_OPTION_VCFSUFFIX=.vcf
+endif
+%.phased.vcf: %.bam %.bai
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKEDPHASING) -I $< --variant $*$(GATK_OPTION_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
+
+# Select snp variants
+ifndef GATK_OPTION_SELECTSNPVARIANTS
+GATK_OPTION_SELECTSNPVARIANTS=--selectTypeToInclude SNP
+endif
+%.snp.vcf: %.vcf
+	$(GATK_COMMAND) -T SelectVariants $(GATK_OPTION_SELECTSNPVARIANTS) --variant $< --out $@.tmp -R $(GATK_REF) && mv $@.tmp $@
+
+##############################
+# Multi-sample variant calling
+# 
+# Requires a variable GATK_BAM_LIST that contains the bam file
+# requirements
+# Output names are specific
+##############################
+ifndef GATK_BAM_LIST
+GATK_BAM_LIST:=
+endif
+
+all.vcf: $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
+	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) $(addprefix -I , $(GATK_BAM_LIST)) -o $@.tmp && mv $@.tmp $@
+
+all.phased.vcf: all.vcf $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKEDPHASING) $(addprefix -I , $(GATK_BAM_LIST)) --variant $< -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@
+
+
+##################################################
+# Sample and flowcell directories
+##################################################
+# The following variables should be set in calling Makefile
+ifndef PROJECT_PREFIX
+PROJECT_PREFIX=P00
+endif
+ifndef FLOWCELL_SUFFIX
+FLOWCELL_SUFFIX=XX
+endif
+ifndef FASTQFILES
+FASTQFILES = $(wildcard $(PROJECT_PREFIX)*/*/*_R1_001.fastq.gz)
+endif
+ifndef SAMPLES
+SAMPLES = $(wildcard $(PROJECT_PREFIX)*)
+endif
+ifndef FLOWCELLRUNS
+FLOWCELLRUNS = $(foreach s,$(SAMPLES),$(wildcard $(s)/*$(FLOWCELL_SUFFIX)))
+endif
+
+ifndef PICARD_OPTION_MERGESAM
+PICARD_OPTION_MERGESAM=CREATE_INDEX=true
+endif
+
+%.sort.merge.bam: $(FLOWCELL_TARGETS)
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(wildcard $(dir $*)*/*.sort.bam)) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
+
+.PHONY: flowcells samples
+
+FLOWCELL_TARGETS=$(subst _R1_001.fastq.gz,.sort.bam,$(FASTQFILES))
+
+flowcells: $(FLOWCELL_TARGETS)
+
+SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.rg.bam)
+
+samples: $(SAMPLE_TARGETS)
+
+all.bam: $(FLOWCELL_TARGETS) $(SAMPLE_TARGETS)
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
+
+all: all.bam
+
