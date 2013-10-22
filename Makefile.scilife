@@ -105,7 +105,7 @@ endif
 # Sequencing configuration options, general
 ##################################################
 ifndef REF
-REF=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/seq/hg19.fa
+REF=
 endif
 ifndef JAVA_MEM
 JAVA_MEM=6g
@@ -119,6 +119,15 @@ endif
 ifndef TARGET_REGIONS
 TARGET_REGIONS=
 endif
+
+# Labels for read files
+ifndef READ1_LABEL
+READ1_LABEL=_R1_001
+endif
+ifndef READ2_LABEL
+READ2_LABEL=_R2_001
+endif
+
 # Utility programs
 ifndef AWK
 AWK=awk
@@ -126,6 +135,45 @@ endif
 ifndef CAT
 CAT=cat
 endif
+
+##################################################
+# Cutadapt and resyncmates
+##################################################
+# cutadapt
+ifndef CUTADAPT
+CUTADAPT=cutadapt
+endif
+ifndef CUTADAPT_THREEPRIME
+CUTADAPT_THREEPRIME=AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC
+endif
+ifndef CUTADAPT_FIVEPRIME
+CUTADAPT_FIVEPRIME=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT
+endif
+ifndef CUTADAPT_OPTIONS
+CUTADAPT_OPTIONS=
+endif
+
+%.trimmed.fastq.gz: %.fastq.gz
+	$(if $(findstring $(READ1_LABEL),$<),\
+	$(CUTADAPT) $(CUTADAPT_OPTIONS) -a $(CUTADAPT_THREEPRIME) $< -o $(@:.gz=).tmp.gz > $*.cutadapt_metrics && mv $(@:.gz=).tmp.gz $@,\
+	$(CUTADAPT) $(CUTADAPT_OPTIONS) -a $(CUTADAPT_FIVEPRIME) $< -o $(@:.gz=).tmp.gz > $*.cutadapt_metrics && mv $(@:.gz=).tmp.gz $@)
+
+# resyncMates
+ifndef RESYNCMATES
+RESYNCMATES=resyncMates.pl
+endif
+ifndef RESYNCMATES_OPTIONS
+RESYNCMATES_OPTIONS=
+endif
+
+# Rule defined for read 1 only - execute if read 2 found
+%$(READ1_LABEL).trimmed.sync.fastq.gz: %$(READ1_LABEL).trimmed.fastq.gz %$(READ2_LABEL).trimmed.fastq.gz
+	@$(eval READ2=$(lastword $^))
+	@if [ -e $(READ2) ]; then \
+	$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp $@; \
+	else \
+	echo "No such file " $(READ2); \
+	fi; 
 
 ##################################################
 # Samtools
@@ -151,8 +199,6 @@ endif
 ##################################################
 # Picard
 ##################################################
-.PRECIOUS: %.bai %.bam
-
 # PICARD_HOME variable
 ifndef PICARD_HOME
 PICARD_HOME=.
@@ -182,7 +228,7 @@ ifndef PICARD_OPTION_SORTSAM
 PICARD_OPTION_SORTSAM=SORT_ORDER=coordinate
 endif
 %.sort.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@; 
+	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@
 
 %.dup.bam: %.bam
 	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
@@ -218,7 +264,7 @@ ifndef BWA_OPTIONS
 BWA_OPTIONS=-t $(BWA_THREADS)
 endif
 ifndef BWA_REF
-BWA_REF=/bubo/nobackup/uppnex/reference/biodata/genomes/Hsapiens/hg19/bwa/hg19.fa
+BWA_REF=
 endif
 
 %.bam: %_R1_001.fastq.gz %_R2_001.fastq.gz
@@ -312,6 +358,9 @@ all.phased.vcf: all.vcf $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
 ##################################################
 # Sample and flowcell directories
 ##################################################
+.PRECIOUS: %.bai %.bam %.trimmed.sync.fastq.gz
+.PHONY: flowcells samples %.log
+
 # The following variables should be set in calling Makefile
 ifndef PROJECT_PREFIX
 PROJECT_PREFIX=P00
@@ -320,7 +369,7 @@ ifndef FLOWCELL_SUFFIX
 FLOWCELL_SUFFIX=XX
 endif
 ifndef FASTQFILES
-FASTQFILES = $(wildcard $(PROJECT_PREFIX)*/*/*_R1_001.fastq.gz)
+FASTQFILES = $(wildcard $(PROJECT_PREFIX)*/*/*$(READ1_LABEL).fastq.gz)
 endif
 ifndef SAMPLES
 SAMPLES = $(wildcard $(PROJECT_PREFIX)*)
@@ -336,18 +385,16 @@ endif
 %.sort.merge.bam: $(FLOWCELL_TARGETS)
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(wildcard $(dir $*)*/*.sort.bam)) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
 
-.PHONY: flowcells samples
-
-FLOWCELL_TARGETS=$(subst _R1_001.fastq.gz,.sort.bam,$(FASTQFILES))
+FLOWCELL_TARGETS=$(subst _R1_001.fastq.gz,.sort.rg.bam,$(FASTQFILES))
 
 flowcells: $(FLOWCELL_TARGETS)
 
-SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.rg.bam)
+SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.bam)
 
 samples: $(SAMPLE_TARGETS)
 
 all.bam: $(FLOWCELL_TARGETS) $(SAMPLE_TARGETS)
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
 
 all: all.bam
 
