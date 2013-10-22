@@ -6,13 +6,73 @@
 
 # vcftools
 ifndef VCFTOOLS
-VCFTOOLS=vcftools
+VCFTOOLS_HOME=.
 endif
 ifndef VCFTOOLS_OPTIONS
 VCFTOOLS_OPTIONS=
 endif
+# htslib
+ifndef HTSLIB_HOME
+HTSLIB_HOME=.
+endif
+ifndef VCF_HOME
+VCF_HOME=.
+endif
 
 %.ped: %.vcf
-	$(VCFTOOLS) $(VCFTOOLS_OPTIONS) --vcf $< --plink --out $*.tmp && mv $*.tmp.ped $@; mv $*.tmp.map $*.map
+	$(VCFTOOLS_HOME)/vcftools $(VCFTOOLS_OPTIONS) --vcf $< --plink --out $*.tmp && mv $*.tmp.ped $@; mv $*.tmp.map $*.map
+
+%.stats.dump: %.vcf
+	$(VCFTOOLS_HOME)/vcf-stats $(VCFTOOLS_STATS_OPTIONS)  $< -p $*.stats
+
+%.frq: %.vcf
+	$(VCFTOOLS_HOME)/vcftools --freq $(VCFTOOLS_OPTIONS) --vcf  $< --out $*.tmp && rename $*.tmp  $* $**
+
+%.2.frq: %.vcf
+	$(VCFTOOLS_HOME)/vcftools --counts --freq2 $(VCFTOOLS_OPTIONS) --vcf  $< --out $*.2.tmp && rename $*.2.tmp  $*.2 $**
+
+%.chk: %.vcf
+	$(VCF_HOME)/vcf check $< > $@.tmp && mv $@.tmp $@
+
+%-summary.pdf: %.chk
+	$(HTSLIB_HOME)/misc/plot-vcfcheck $< -p $*
 
 
+#
+# annovar
+# 
+ifndef ANNOVAR_HOME
+ANNOVAR_HOME=.
+endif
+ifndef ANNOVAR_OPTIONS
+ANNOVAR_OPTIONS=
+endif
+ifndef ANNOVAR_DB
+ANNOVAR_DB=$(ANNOVAR_HOME)/humandb
+endif
+ifndef ANNOVAR_BUILDVER
+ANNOVAR_BUILDVER=hg19
+endif
+
+# Every database needs specific non-generic rule. Too cumbersome.
+# ifndef ANNOVAR_DATABASES
+# ANNOVAR_DATABASES=snp137 1000g2012apr
+# endif
+# ifndef ANNOVAR_LOCAL_DATABASES
+# ANNOVAR_LOCAL_DATABASES=esp6500si_all
+# endif
+
+# init_humandb:
+# 	$(ANNOVAR_HOME)/annotate_variation.pl -buildver $(ANNOVAR_BUILDVER) -downdb snp137
+
+ifndef ANNOVAR_TABLE_OPTIONS
+ANNOVAR_TABLE_OPTIONS=--otherinfo
+endif
+%.avinput.hg19_multianno.txt: %.avinput
+	$(ANNOVAR_HOME)/table_annovar.pl $< $(ANNOVAR_DB) $(ANNOVAR_TABLE_OPTIONS) --buildver hg19
+
+ifndef ANNOVAR_CONVERT_OPTIONS
+ANNOVAR_CONVERT_OPTIONS=--includeinfo
+endif
+%.avinput: %.vcf
+	$(ANNOVAR_HOME)/convert2annovar.pl  $(ANNOVAR_OPTIONS) $(ANNOVAR_CONVERT_OPTIONS) -format vcf4old $< > $@.tmp && mv $@.tmp $@

@@ -14,11 +14,11 @@ ifndef PLINK_OPTIONS
 PLINK_OPTIONS=
 endif
 
-%.ld: %.ped
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --r2 --out $*
+%.r2.ld: %.ped
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --r2 --out $(@:.ld=) 
 
-%.ld: %.bed
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --r2 --out $*
+%.r2.ld: %.bed
+	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --r2 --out $(@:.ld=)
 
 %.bed: %.ped
 	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --make-bed --out $*
