@@ -128,12 +128,12 @@ TODO: add fastqc and picard metrics
 
 Run with '-n' flag to monitor commands:
 
-	make -n all
+	make -n halo
 	
-Make all target with one of the following commands:
+Make halo target with one of the following commands:
 
-	make all
-	make all.filtered.eval_metrics
+	make halo
+	make halo.filtered.eval_metrics
 	
 #### 2. Make flowcell targets ####
 
