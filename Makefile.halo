@@ -338,7 +338,7 @@ endif
 	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
 ##############################
-# 0. Raw genotypes
+# 1. Raw genotypes
 # For identification of realignment target regions
 ##############################
 ifndef GATK_OPTION_RAW_UNIFIEDGENOTYPER
@@ -355,7 +355,7 @@ endif
 	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER_RAW) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
 
-# 1. Realignment target creator
+# 2. Realignment target creator
 ifndef GATK_OPTION_REALIGN_CREATOR
 GATK_OPTION_REALIGN_CREATOR=-R $(GATK_REF)
 ifneq ($(GATK_TARGET_REGIONS),"")
@@ -369,11 +369,11 @@ endif
 ifndef GATK_OPTION_INDEL_REALIGN
 GATK_OPTION_INDEL_REALIGN=-R $(GATK_REF)
 endif
-# 2. Indel realignment
+# 3. Indel realignment
 %.realign.bam: %.bam %.intervals %.raw.vcf
 	$(GATK_COMMAND) -T IndelRealigner $(GATK_OPTION_INDEL_REALIGN) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
 
-# 3. Recalibration
+# 4. Recalibration
 ifndef GATK_OPTION_RECAL
 GATK_OPTION_RECAL=-R $(GATK_REF)
 ifneq ($(GATK_TARGET_REGIONS),"")
@@ -390,23 +390,23 @@ endif
 %.recal.bam: %.bam %.recal_data.grp
 	$(GATK_COMMAND) -T PrintReads $(GATK_OPTION_PRINTREADS) -I $< -BQSR $(lastword $^) -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
 
-# 4. Clipping
+# 5. Clipping
 ifndef GATK_OPTION_CLIPREADS
 GATK_OPTION_CLIPREADS=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
 endif
 %.clip.bam: %.bam %.bai
 	$(GATK_COMMAND) -T ClipReads $(GATK_OPTION_CLIPREADS) -I $< -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
 
-# 5. Generic genotyping; see above
+# 6. Generic genotyping; see above
 
-# 6. Variant filtration
+# 7. Variant filtration
 ifndef GATK_OPTION_VARIANTFILTRATION
 GATK_OPTION_VARIANTFILTRATION=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
 endif
 %.filtered.vcf: %.vcf
 	$(GATK_COMMAND) -T VariantFiltration $(GATK_OPTION_VARIANTFILTRATION) -R $(GATK_REF) --variant $< --out $@.tmp && mv $@.tmp $@
 
-# 7. Variant evaluation
+# 8. Variant evaluation
 ifndef GATK_OPTION_VARIANT_EVAL
 GATK_OPTION_VARIANT_EVAL=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
 ifneq ($(GATK_DBSNP),"")

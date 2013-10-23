@@ -1,0 +1,47 @@
+#-*- makefile -*-
+
+# Usage
+#
+# Copy this Makefile to the *root* directory where project data
+# resides. 
+#
+# Example commands follow:
+#
+# Make the flowcell targets (*.sort.rg.bam files):
+# make flowcells 
+#
+# Make the sample targets (*
+
+# Change if naming scheme is different from SciLife production names
+# SAMPLE_PREFIX=P00
+#
+
+# Uncomment these if specific samples/flowcells should be run 
+# SAMPLES:=sample1 sample2 etc
+# NB: flowcells not yet implemented
+# FLOWCELLS:=flowcell1 flowcell2 etc
+
+# Set to bed/interval_list file that defines targets and baits
+# TARGET_REGIONS=
+# BAIT_REGIONS=
+
+# Set to dbsnp database of choice
+# DBSNP=
+
+# Search paths for GATK and picard needed
+# GATK_HOME=
+# PICARD_HOME=
+
+# Sequence reference file and BWA index prefix
+# REF=
+# BWA_REF=
+
+# In general, each command has its own option variable. Change these
+# at will. An example follows:
+
+# GATK_OPTION_UNIFIEDGENOTYPER=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_OPTION_THREADS) -R $(GATK_REF)
+
+# Include the haloplex pipeline Makefile. Look in this file for further options. 
+# include /path/to/Makefile.halo
+
+
