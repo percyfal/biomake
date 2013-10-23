@@ -17,8 +17,8 @@ endif
 ifndef SBATCH
 SBATCH=sbatch
 endif
-ifndef SBATCH_OPTION
-SBATCH_OPTION=
+ifndef SBATCH_OPTIONS
+SBATCH_OPTIONS=
 endif
 
 ##############################
@@ -111,7 +111,7 @@ endif
 	echo -e "\n\n#" `date` >> $@ 
 	echo -e "\n\n"$(SLURM_PREHOOK) >> $@
 	echo -e $(MAKE) $*.log >> $@
-	$(SBATCH) $(SBATCH_OPTION) $@
+	$(SBATCH) $(SBATCH_OPTIONS) $@
 endif
 
 # logging
@@ -121,4 +121,14 @@ endif
 
 
 # Want %.log to run every time but this doesn't help?!?
-.PHONY: %.log
+.PHONY: %.log general-settings  general-header
+
+# http://blog.melski.net/2010/11/30/makefile-hacks-print-the-value-of-any-variable/
+print-%:
+	@echo '$*=$($*)'
+
+general-header:
+	@echo -e "\nMakefile.general options"
+	@echo "========================"
+
+general-settings: general-header print-SBATCH print-SBATCH_OPTIONS print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_EXTRA_HEADER

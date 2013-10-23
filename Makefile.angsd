@@ -1,7 +1,9 @@
 #-*- makefile -*-
 
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-include $(MAKEDIR)/Makefile.ngsvars
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
 
 # Angsd search path. Since some of the programs are located in the
 # misc subfolder, use absolute search path. The user must set this
@@ -204,3 +206,18 @@ GEM_MAPPABILITY_OPTIONS=-l 100 -T 7
 endif
 %.mappability: %.gem
 	$(GEM_PATH)/gem-mappability $(GEM_MAPPABILITY_OPTIONS) -I $< -o $*.tmp && mv $*.tmp.mappability $@
+
+##############################
+# settings
+##############################
+.PHONY: angsd-settings angsd-header
+
+print-%:
+	@echo '$*=$($*)'
+
+angsd-header:
+	@echo -e "\nMakefile.angsd options"
+	@echo "========================"
+
+
+angsd-settings: angsd-header

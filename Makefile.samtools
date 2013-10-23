@@ -5,7 +5,9 @@
 # 
 
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-include $(MAKEDIR)/Makefile.ngsvars
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
 
 # samtools
 ifndef SAMTOOLS
@@ -23,3 +25,19 @@ endif
 
 %.bam: %.sam
 	$(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+
+##############################
+# settings
+##############################
+.PHONY: samtools-settings samtools-header
+
+print-%:
+	@echo '$*=$($*)'
+
+samtools-header:
+	@echo -e "\nMakefile.samtools options"
+	@echo "========================="
+
+
+samtools-settings: samtools-header print-SAMTOOLS print-SAMTOOLS_THREADS print-SAMTOOLS_OPTIONS print-SAMTOOLS_REF

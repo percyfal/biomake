@@ -1,451 +1,26 @@
 #-*- makefile -*-
 #
-# File: Makefile.scilife
+# File: Makefile.halo
 #
-# Description: scilife pipeline Make rules
+# Description: halo pipeline make rules
 #
 
 # The directory of this makefile
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-
-##################################################
-# SLURM interaction
-##################################################
-# sbatch submission
-ifndef SBATCH
-SBATCH=sbatch
-endif
-ifndef SBATCH_OPTION
-SBATCH_OPTION=
-endif
-# SLURM account empty by default - required in calling Makefile
-ifndef SLURM_ACCOUNT
-SLURM_ACCOUNT=
-endif
-# SLURM time - 1h default
-ifndef SLURM_TIME
-SLURM_TIME=01:00:00
-endif
-# SLURM N nodes
-ifndef SLURM_N_NODES
-SLURM_N_NODES=1
-endif
-# Extra header info. Put everything in variable.
-ifndef SLURM_EXTRA_HEADER
-SLURM_EXTRA_HEADER=
-endif
-# Jobname variable
-ifndef SLURM_JOBNAME
-SLURM_JOBNAME=
-endif
-# Workdir variable
-ifndef SLURM_WORKDIR
-SLURM_WORKDIR=
-endif
-# Mailtype variable
-ifndef SLURM_MAILTYPE
-SLURM_MAILTYPE=All
-endif
-# Mailuser variable
-ifndef SLURM_PARTITION
-SLURM_PARTITION=devel
-endif
-# Partition
-ifndef SLURM_MAILUSER
-SLURM_MAILUSER=
-endif
-# SLURM n cores
-ifndef SLURM_N_CORES
-SLURM_N_CORES=8
-ifeq ($(SLURM_PARTITION),core)
-SLURM_N_CORES=1
-endif
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
 endif
 
-%.sbatch:
-ifeq ($(SLURM_ACCOUNT),)
-	echo -e No SLURM_ACCOUNT defined; exiting!
-else
-	echo -e "#!/bin/bash -l" > $@ 
-	echo -e "#SBATCH" -p $(SLURM_PARTITION) >> $@ 
-ifeq ($(SLURM_PARTITION),halvan)
-	echo -e "#SBATCH" -M $(SLURM_PARTITION) >> $@
-endif
-	echo -e "#SBATCH" -A $(SLURM_ACCOUNT) >> $@ 
-	echo -e "#SBATCH" -n $(SLURM_N_CORES) >> $@ 
-ifeq ($(SLURM_PARTITION),node)
-	echo -e "#SBATCH" -N $(SLURM_N_NODES) >> $@ 
-endif
-	echo -e "#SBATCH" -t $(SLURM_TIME) >> $@ 
-ifneq ($(SLURM_JOBNAME),)
-	echo -e "#SBATCH" -J $(SLURM_JOBNAME) >> $@ 
-else
-	echo -e "#SBATCH" -J $* >> $@ 
-endif
-ifneq ($(SLURM_WORKDIR),)
-	echo -e "#SBATCH" -D $(SLURM_WORKDIR) >> $@
-endif
-ifneq ($(SLURM_EXTRA_HEADER),)
-	echo -e $(SLURM_EXTRA_HEADER) >> $@ 
-endif
-	echo -e "#SBATCH --mail-type="$(SLURM_MAILTYPE) >> $@
-ifneq ($(SLURM_MAILUSER),)
-	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@
-endif
-	echo -e "\n\n#" `date` >> $@ 
-	echo -e "\n\n"$(SLURM_PREHOOK) >> $@
-	echo -e $(MAKE) $*.log >> $@
-	$(SBATCH) $(SBATCH_OPTION) $@
-endif
+include $(MAKEDIR)/Makefile.general
+include $(MAKEDIR)/Makefile.sequenceprocessing
+include $(MAKEDIR)/Makefile.samtools
+include $(MAKEDIR)/Makefile.bwa
+include $(MAKEDIR)/Makefile.picard
+include $(MAKEDIR)/Makefile.gatk
 
-# logging
-%.log:
-	echo -e "\n\n"`date`"\n\n" >> $@.tmp
-	$(MAKE) $* 2>&1 | tee -a $@.tmp && mv $@.tmp $@
-
-
-##################################################
-# General program settings
-##################################################
-ifndef JAVA_MEM
-JAVA_MEM=6g
-endif
-ifndef JAVA_TMPDIR
-JAVA_TMPDIR=.
-endif
-ifndef THREADS
-THREADS=8
-endif
-
-# Utility programs
-ifndef AWK
-AWK=awk
-endif
-ifndef CAT
-CAT=cat
-endif
-
-##################################################
-# Sequencing configuration options, general
-##################################################
-ifndef REF
-REF=
-endif
-ifndef DBSNP
-DBSNP=""
-endif
-ifndef TARGET_REGIONS
-TARGET_REGIONS=""
-endif
-ifndef BAIT_REGIONS
-BAIT_REGIONS=""
-endif
-
-# Labels for read files
-ifndef READ1_LABEL
-READ1_LABEL=_R1_001
-endif
-ifndef READ2_LABEL
-READ2_LABEL=_R2_001
-endif
-
-##################################################
-# Cutadapt and resyncmates
-##################################################
-# cutadapt
-ifndef CUTADAPT
-CUTADAPT=cutadapt
-endif
-ifndef CUTADAPT_THREEPRIME
-CUTADAPT_THREEPRIME=AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC
-endif
-ifndef CUTADAPT_FIVEPRIME
-CUTADAPT_FIVEPRIME=AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT
-endif
-ifndef CUTADAPT_OPTIONS
-CUTADAPT_OPTIONS=
-endif
-
-%.trimmed.fastq.gz: %.fastq.gz
-	$(if $(findstring $(READ1_LABEL),$<),\
-	$(CUTADAPT) $(CUTADAPT_OPTIONS) -a $(CUTADAPT_THREEPRIME) $< -o $(@:.gz=).tmp.gz > $*.cutadapt_metrics && mv $(@:.gz=).tmp.gz $@,\
-	$(CUTADAPT) $(CUTADAPT_OPTIONS) -a $(CUTADAPT_FIVEPRIME) $< -o $(@:.gz=).tmp.gz > $*.cutadapt_metrics && mv $(@:.gz=).tmp.gz $@)
-
-# resyncMates
-ifndef RESYNCMATES
-RESYNCMATES=resyncMates.pl
-endif
-ifndef RESYNCMATES_OPTIONS
-RESYNCMATES_OPTIONS=
-endif
-
-# Rule defined for read 1 only - execute if read 2 found
-%$(READ1_LABEL).trimmed.sync.fastq.gz: %$(READ1_LABEL).trimmed.fastq.gz %$(READ2_LABEL).trimmed.fastq.gz
-	@$(eval READ2=$(lastword $^))
-	@if [ -e $(READ2) ]; then \
-	echo "$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp $@"; \
-	$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp $@; \
-	else \
-	echo "No such file " $(READ2); \
-	fi; 
-
-# Needed since %$(READ1_LABEL).trimmed.sync.fastq.gz is a prerequisite for picard
-%$(READ2_LABEL).trimmed.sync.fastq.gz: %$(READ1_LABEL).trimmed.sync.fastq.gz
-	echo "Done"
-
-##################################################
-# Samtools
-##################################################
-# samtools
-ifndef SAMTOOLS
-SAMTOOLS=samtools
-endif
-ifndef SAMTOOLS_THREADS
-SAMTOOLS_THREADS=$(THREADS)
-endif
-ifndef SAMTOOLS_OPTIONS
-SAMTOOLS_OPTIONS=
-endif
-ifndef SAMTOOLS_REF
-SAMTOOLS_REF=$(REF)
-endif
-
-##################################################
-# Alignment
-##################################################
-# bwa
-ifndef BWA
-BWA=bwa
-endif
-ifndef BWA_THREADS
-BWA_THREADS=$(THREADS)
-endif
-ifndef BWA_OPTIONS
-BWA_OPTIONS=-t $(BWA_THREADS)
-endif
-# NB: this is *not* equal to the sequence reference $(REF)
-ifndef BWA_REF
-BWA_REF=
-endif
-
-# Only define bam rule - use pipe to avoid unnecessary sam file creation
-%.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
-	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
-
-##################################################
-# Picard
-##################################################
-# PICARD_HOME variable
-ifndef PICARD_HOME
-PICARD_HOME=.
-endif
-ifndef PICARD_JAVA_MEM
-PICARD_JAVA_MEM=$(JAVA_MEM)
-endif
-ifndef PICARD_JAVA_TMPDIR
-PICARD_JAVA_TMPDIR=$(JAVA_TMPDIR)
-endif
-ifndef PICARD_JAVA
-PICARD_JAVA=java -Xmx$(PICARD_JAVA_MEM) -Djava.io.tmpdir=$(PICARD_JAVA_TMPDIR) -jar 
-endif
-ifndef PICARD_REF
-PICARD_REF=$(REF)
-endif
-
-# Common options
-ifndef PICARD_COMMON_OPTION
-PICARD_COMMON_OPTION=VALIDATION_STRINGENCY=SILENT
-endif
-
-
-# Bam index
-%.bai: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/BuildBamIndex.jar I=$< O=$@.tmp $(PICARD_COMMON_OPTION) && mv $@.tmp $@
-
-ifndef PICARD_SORTSAM_OPTION
-PICARD_SORTSAM_OPTION=SORT_ORDER=coordinate
-endif
-%.sort.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_COMMON_OPTION) $(PICARD_SORTSAM_OPTION) && mv $@.tmp $@
-
-%.dup.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_COMMON_OPTION) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
-
-%.interval_list: $(PICARD_REF)
-	$(PICARD_JAVA) $(PICARD_HOME)/CreateSequenceDictionary.jar R=$< O=$@.tmp && mv $@.tmp $@
-
-%.interval_list: %.bed $(subst .fa,.interval_list,$(PICARD_REF))
-	$(CAT) $(lastword $^) > $@.tmp
-	$(AWK) '{printf("%s\t%s\t%s\t%s\t%s\n", $$1,$$2,$$3,"+",$$4)}' $< >> $@.tmp && mv $@.tmp $@
-
-%.sort.rg.bam: %.sort.bam
-	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
-	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
-	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@.bam=).bai
-
-# Metrics calculations
-%.insert_metrics: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/CollectInsertSizeMetrics.jar H=$*.hist I=$< O=$@.tmp R=$(PICARD_REF) && mv $@.tmp $@
-
-##################################################
-# GATK
-##################################################
-# GATK_HOME variable
-ifndef GATK_HOME
-GATK_HOME=.
-endif
-ifndef GATK_JAVA_MEM
-GATK_JAVA_MEM=$(JAVA_MEM)
-endif
-ifndef GATK_JAR
-GATK_JAR=$(GATK_HOME)/GenomeAnalysisTK.jar
-endif
-ifndef GATK_JAVA_TMPDIR
-GATK_JAVA_TMPDIR=$(JAVA_TMPDIR)
-endif
-ifndef GATK_COMMAND
-GATK_COMMAND=java -Xmx$(GATK_JAVA_MEM) -Djava.io.tmpdir=$(GATK_JAVA_TMPDIR) -jar $(GATK_JAR)
-endif
-ifndef GATK_REF
-GATK_REF=$(REF)
-endif
-ifndef GATK_DBSNP
-GATK_DBSNP=$(DBSNP)
-endif
-ifndef GATK_TARGET_REGIONS
-GATK_TARGET_REGIONS=$(TARGET_REGIONS)
-endif
-ifndef GATK_KNOWN_SITES
-GATK_KNOWN_SITES=$(GATK_DBSNP)
-endif
-
-# Generic program options
-ifndef GATK_THREADS
-GATK_THREADS=$(THREADS)
-endif
-
-ifndef GATK_UNIFIEDGENOTYPER_OPTION
-GATK_UNIFIEDGENOTYPER_OPTION=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
-ifneq ($(GATK_DBSNP),"")
-GATK_UNIFIEDGENOTYPER_OPTION+=--dbsnp $(GATK_DBSNP)
-endif
-ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_UNIFIEDGENOTYPER_OPTION+=-L $(GATK_TARGET_REGIONS)
-endif
-endif
-# Generic genotyping
-%.vcf: %.bam
-	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_OPTION) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
-
-##############################
-# 1. Raw genotypes
-# For identification of realignment target regions
-##############################
-ifndef GATK_UNIFIEDGENOTYPER_RAW_OPTION
-GATK_UNIFIEDGENOTYPER_RAW_OPTION=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
-ifneq ($(GATK_DBSNP),"")
-GATK_UNIFIEDGENOTYPER_RAW_OPTION+=--dbsnp $(GATK_DBSNP)
-endif
-ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_UNIFIEDGENOTYPER_RAW_OPTION+=-L $(GATK_TARGET_REGIONS)
-endif
-endif
-
-%.sort.merge.raw.vcf: %.sort.merge.bam
-	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_RAW_OPTION) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
-
-
-# 2. Realignment target creator
-ifndef GATK_REALIGN_TARGET_CREATOR_OPTION
-GATK_REALIGN_TARGET_CREATOR_OPTION=-R $(GATK_REF)
-ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_REALIGN_TARGET_CREATOR_OPTION+=-L $(GATK_TARGET_REGIONS)
-endif
-endif
-
-%.intervals: %.bam
-	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_REALIGN_TARGET_CREATOR_OPTION) -I $< -o $@.tmp && mv $@.tmp $@
-
-ifndef GATK_INDELREALIGNER_OPTION
-GATK_INDELREALIGNER_OPTION=-R $(GATK_REF)
-endif
-# 3. Indel realignment
-%.realign.bam: %.bam %.intervals %.raw.vcf
-	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTION) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
-
-# 4. Recalibration
-ifndef GATK_BASERECALIBRATOR_OPTION
-GATK_BASERECALIBRATOR_OPTION=-R $(GATK_REF)
-ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_BASERECALIBRATOR_OPTION+=-L $(GATK_TARGET_REGIONS)
-endif
-endif
-%.recal_data.grp: %.bam %.bai
-	$(eval KNOWN_SITES=$(addprefix -knownSites ,$(GATK_KNOWN_SITES)))
-	$(GATK_COMMAND) -T BaseRecalibrator $(GATK_BASERECALIBRATOR_OPTION) $(KNOWN_SITES) -I $< -o $@.tmp && mv $@.tmp $@
-
-ifndef GATK_PRINTREADS_OPTION
-GATK_PRINTREADS_OPTION=-R $(GATK_REF)
-endif
-%.recal.bam: %.bam %.recal_data.grp
-	$(GATK_COMMAND) -T PrintReads $(GATK_PRINTREADS_OPTION) -I $< -BQSR $(lastword $^) -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
-
-# 5. Clipping
-ifndef GATK_CLIPREADS_OPTION
-GATK_CLIPREADS_OPTION=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
-endif
-%.clip.bam: %.bam %.bai
-	$(GATK_COMMAND) -T ClipReads $(GATK_CLIPREADS_OPTION) -I $< -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
-
-# 6. Generic genotyping; see above
-
-# 7. Variant filtration
-ifndef GATK_VARIANTFILTRATION_OPTION
-GATK_VARIANTFILTRATION_OPTION=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
-endif
-%.filtered.vcf: %.vcf
-	$(GATK_COMMAND) -T VariantFiltration $(GATK_VARIANTFILTRATION_OPTION) -R $(GATK_REF) --variant $< --out $@.tmp && mv $@.tmp $@
-
-# 8. Variant evaluation
-ifndef GATK_VARIANT_EVAL_OPTION
-GATK_VARIANT_EVAL_OPTION=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
-ifneq ($(GATK_DBSNP),"")
-GATK_VARIANT_EVAL_OPTION+=--dbsnp $(GATK_DBSNP)
-endif
-ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_VARIANT_EVAL_OPTION+=-L $(GATK_TARGET_REGIONS)
-endif
-endif
-%.eval_metrics: %.vcf
-	$(GATK_COMMAND) -T VariantEval $(GATK_VARIANT_EVAL_OPTION) -R $(GATK_REF) --eval $< -o $@.tmp && mv $@.tmp $@
-
-##################################################
-# Sample and flowcell directories
-##################################################
-.PRECIOUS: %.bai  %.trimmed.sync.fastq.gz %.vcf %.sort.merge.raw.vcf
-.PHONY: trimsync flowcells samples %.log halo all
-
-# The following variables should be set in calling Makefile
-ifndef SAMPLE_PREFIX
-SAMPLE_PREFIX=P00
-endif
-ifndef FLOWCELL_SUFFIX
-FLOWCELL_SUFFIX=XX
-endif
-ifndef SAMPLES
-SAMPLES = $(wildcard $(SAMPLE_PREFIX)*)
-endif
-ifndef FLOWCELLRUNS
-FLOWCELLRUNS = $(foreach s,$(SAMPLES),$(wildcard $(s)/*$(FLOWCELL_SUFFIX)))
-endif
-# ifndef FLOWCELLS
-# FLOWCELLS= $(subst /, ,$(foreach s,$(SAMPLES),$(wildcard $(s)/*$(FLOWCELL_SUFFIX))))
-# endif
-# Requirement: directory name == sample name
-# TODO: Fix filtering based on flowcell name
-ifndef FASTQFILES
-#FASTQFILES = $(foreach f,$(FLOWCELLS),$(foreach s,$(SAMPLES),$(wildcard $(s)/$(f)/*$(READ1_LABEL).fastq.gz)))
-FASTQFILES = $(foreach s,$(SAMPLES),$(wildcard $(s)/*/*$(READ1_LABEL).fastq.gz))
+# Output name
+ifndef HALO_TARGET_PREFIX
+HALO_TARGET_PREFIX=halo
 endif
 
 # Input label
@@ -458,29 +33,99 @@ SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.realign.recal.clip.ba
 
 # Target rules
 trimsync: $(TRIMSYNC_TARGETS)
-
 flowcells: $(FLOWCELL_TARGETS)
-
 samples: $(SAMPLE_TARGETS)
 
-# NB: Must we put this here? Otherwise FLOWCELL_TARGETS unset?
-ifndef PICARD_MERGESAM_OPTION
-PICARD_MERGESAM_OPTION=CREATE_INDEX=true
-endif
+$(HALO_TARGET_PREFIX).bam: $(SAMPLE_TARGETS)
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+
+halo: all
+
+all: $(HALO_TARGET_PREFIX).filtered.eval_metrics
+
+##############################
+# bwa alignment
+##############################
+# Redefine bam recipe to get correct file suffixes
+# Only define bam rule - use pipe to avoid unnecessary sam file creation
+%.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
+	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+# Add read group information
+# This rule is so specific it is kept here
+%.sort.rg.bam: %.sort.bam
+	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
+	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
+	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@.bam=).bai
+
+
+##############################
+# Merge rule 
+##############################
 # The following rule has as requirement *all* flowcells, but the input
 # files to a given merge operation are the sample-specific bam files
 %.sort.merge.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTION) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
 
-all.bam: $(SAMPLE_TARGETS)
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_COMMON_OPTION) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+##############################
+# 1. Raw genotypes
+# For identification of realignment target regions
+##############################
+ifndef GATK_UNIFIEDGENOTYPER_RAW_OPTIONS
+GATK_UNIFIEDGENOTYPER_RAW_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
+ifneq ($(GATK_DBSNP),"")
+GATK_UNIFIEDGENOTYPER_RAW_OPTIONS+=--dbsnp $(GATK_DBSNP)
+endif
+ifneq ($(GATK_TARGET_REGIONS),"")
+GATK_UNIFIEDGENOTYPER_RAW_OPTIONS+=-L $(GATK_TARGET_REGIONS)
+endif
+endif
 
-halo: all
+%.sort.merge.raw.vcf: %.sort.merge.bam
+	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_RAW_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
-all: all.filtered.eval_metrics
+# 2. Realignment target creator
+
+# 3. Indel realignment around known positions
+%.merge.realign.bam: %.merge.bam %.merge.intervals %.merge.raw.vcf
+	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTIONS) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
+
+# 4. Recalibration
+
+# 5. Clipping
+GATK_CLIPREADS_OPTIONS=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
+
+# 6. Generic genotyping
+GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF) --dbsnp $(GATK_DBSNP) -L $(GATK_TARGET_REGIONS)
+
+# 7. Variant filtration - set specific options for Haloplex
+GATK_VARIANTFILTRATION_OPTIONS=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
+
+# 8. Variant evaluation
+GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
+
+##################################################
+# Precious 
+##################################################
+.PRECIOUS: %.bai  %.trimmed.sync.fastq.gz %.vcf %.sort.merge.raw.vcf %.filtered.vcf
 
 # Clean
 CLEANTARGETS:=$(wildcard $(SAMPLE_PREFIX)*/*/*trimmed*) $(wildcard $(SAMPLE_PREFIX)*/*/*bam*) $(wildcard $(SAMPLE_PREFIX)*/*/*metrics) $(wildcard $(SAMPLE_PREFIX)*/*merge*) all.*
 clean:
 	rm -f $(CLEANTARGETS)
+
+##############################
+# settings
+##############################
+.PHONY: trimsync flowcells samples %.log halo all halo-settings halo-header
+
+print-%:
+	@echo '$*=$($*)'
+
+halo-header:
+	@echo -e "\nMakefile.halo options"
+	@echo "====================="
+
+halo-settings: halo-header print-HALO_TARGET_PREFIX print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
+

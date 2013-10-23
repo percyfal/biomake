@@ -5,7 +5,9 @@
 # 
 
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-include $(MAKEDIR)/Makefile.ngsvars
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
 
 .PRECIOUS: %.bai
 
@@ -57,3 +59,40 @@ endif
 # Metrics calculations
 %.insert_metrics: %.bam
 	$(PICARD_JAVA) $(PICARD_HOME)/CollectInsertSizeMetrics.jar H=$*.hist I=$< O=$@.tmp R=$(PICARD_REF) && mv $@.tmp $@
+
+# Add read group information
+%.rg.bam: %.bam
+	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
+	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
+	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@.bam=).bai
+
+##############################
+# Merging
+# Difficult to write generic rules
+##############################
+ifndef PICARD_MERGESAM_OPTIONS
+PICARD_MERGESAM_OPTIONS=CREATE_INDEX=true
+endif
+ifndef PICARD_MERGESAM_TARGETS
+PICARD_MERGESAM_TARGETS=
+endif
+
+%.merge.bam: $(PICARD_MERGESAM_TARGETS)
+	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(PICARD_MERGESAM_TARGETS))))
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_OPTIONS_COMMON) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+
+
+
+##############################
+# settings
+##############################
+.PHONY: picard-settings picard-header
+
+print-%:
+	@echo '$*=$($*)'
+
+picard-header:
+	@echo -e "\nMakefile.picard options"
+	@echo "======================="
+
+picard-settings: picard-header print-PICARD_HOME print-PICARD_JAVA_MEM print-PICARD_JAVA_TMPDIR print-PICARD_JAVA print-PICARD_REF print-PICARD_OPTIONS_COMMON print-PICARD_SORTSAM_OPTIONS print-PICARD_MERGESAM_OPTIONS print-PICARD_MERGESAM_TARGETS

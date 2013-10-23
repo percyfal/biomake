@@ -1,5 +1,9 @@
 #-*- makefile -*-
 
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
 #
 # variation analysis makefile rules
 # 

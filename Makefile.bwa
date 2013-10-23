@@ -5,8 +5,12 @@
 # 
 
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-include $(MAKEDIR)/Makefile.ngsvars
-include $(MAKEDIR)/Makefile.samtools
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
+ifeq ($(findstring Makefile.samtools,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.samtools
+endif
 
 # bwa
 ifndef BWA
@@ -22,5 +26,20 @@ ifndef BWA_REF
 BWA_REF=$(REF)
 endif
 
-%.bam: %_R1_001.fastq.gz %_R2_001.fastq.gz
+%.bam: %$(READ1_LABEL).fastq.gz %$(READ2_LABEL).fastq.gz
 	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+##############################
+# settings
+##############################
+.PHONY: bwa-settings bwa-header
+
+print-%:
+	@echo '$*=$($*)'
+
+bwa-header:
+	@echo -e "\nMakefile.bwa options"
+	@echo "===================="
+
+
+bwa-settings: bwa-header print-BWA print-BWA_THREADS print-BWA_OPTIONS print-BWA_REF

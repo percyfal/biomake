@@ -53,8 +53,23 @@ memory). Where applicable, these options also have program specific
 options that can be overridden (such as BWA_THREADS and
 GATK_JAVA_MEM).
 
-Unfortunately, the only way to know which configuration variables are
-available is to sift through the relevant Makefiles.
+By convention, every Makefile should have a recipe named
+MAKEFILEEXTENSION-settings (e.g. bwa-settings), defined at the end of
+the file. Running this command should print the current settings and
+show available options:
+
+	make -f /path/to/Makefile.bwa  bwa-settings
+
+    Makefile.bwa options
+	====================
+	BWA=/path/to/bwa-0.7.5a/bwa
+	BWA_THREADS=8
+	BWA_OPTIONS=-t 8
+	BWA_REF=
+
+Since it is difficult to maintain this list, some options may be
+missing, and the only way to know which these configuration variables
+are is to sift through the relevant Makefile. 
 
 # Pipelines #
 
