@@ -1,8 +1,19 @@
 #-*- makefile -*-
 
-# Generic rules
+# General rules
 
+# Utility programs
+ifndef AWK
+AWK=awk
+endif
+ifndef CAT
+CAT=cat
+endif
+
+
+##############################
 # sbatch submission
+##############################
 ifndef SBATCH
 SBATCH=sbatch
 endif
@@ -10,6 +21,9 @@ ifndef SBATCH_OPTION
 SBATCH_OPTION=
 endif
 
+##############################
+# SLURM options
+##############################
 # SLURM account empty - required in calling Makefile
 ifndef SLURM_ACCOUNT
 SLURM_ACCOUNT=
@@ -100,11 +114,11 @@ endif
 	$(SBATCH) $(SBATCH_OPTION) $@
 endif
 
-# Want %.log to run every time but this doesn't help?!?
-.PHONY: %.log
-
 # logging
 %.log:
 	echo -e "\n\n"`date`"\n\n" >> $@.tmp
 	$(MAKE) $* 2>&1 | tee -a $@.tmp && mv $@.tmp $@
 
+
+# Want %.log to run every time but this doesn't help?!?
+.PHONY: %.log

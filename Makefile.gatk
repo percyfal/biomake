@@ -35,17 +35,17 @@ GATK_TARGET_REGIONS=$(TARGET_REGIONS)
 endif
 
 # Generic program options
-ifndef GATK_OPTION_THREADS
-GATK_OPTION_THREADS=$(THREADS)
+ifndef GATK_THREADS
+GATK_THREADS=$(THREADS)
 endif
 
-ifndef GATK_OPTION_UNIFIEDGENOTYPER
-GATK_OPTION_UNIFIEDGENOTYPER=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_OPTION_THREADS) -R $(GATK_REF)
+ifndef GATK_UNIFIEDGENOTYPER_OPTIONS
+GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
 ifneq ($(GATK_DBSNP), "")
-GATK_OPTION_UNIFIEDGENOTYPER+=--dbsnp $(GATK_DBSNP)
+GATK_UNIFIEDGENOTYPER_OPTIONS+=--dbsnp $(GATK_DBSNP)
 endif
 ifneq ($(GATK_TARGET_REGIONS), "")
-GATK_OPTION_UNIFIEDGENOTYPER+=-L $(GATK_TARGET_REGIONS)
+GATK_UNIFIEDGENOTYPER_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 
@@ -56,21 +56,21 @@ endif
 ##############################
 
 # Read Backed Phasing
-ifndef GATK_OPTION_READBACKEDPHASING
-GATK_OPTION_READBACKEDPHASING=
+ifndef GATK_READBACKEDPHASING_OPTIONS
+GATK_READBACKEDPHASING_OPTIONS=
 endif
-ifndef GATK_OPTION_VCFSUFFIX
-GATK_OPTION_VCFSUFFIX=.vcf
+ifndef GATK_VCFSUFFIX
+GATK_VCFSUFFIX=.vcf
 endif
 %.phased.vcf: %.bam %.bai
-	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKEDPHASING) -I $< --variant $*$(GATK_OPTION_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_READBACKEDPHASING_OPTIONS) -I $< --variant $*$(GATK_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
 
 # Select snp variants
-ifndef GATK_OPTION_SELECTSNPVARIANTS
-GATK_OPTION_SELECTSNPVARIANTS=--selectTypeToInclude SNP
+ifndef GATK_SELECTSNPVARIANTS_OPTIONS
+GATK_SELECTSNPVARIANTS_OPTIONS=--selectTypeToInclude SNP
 endif
 %.snp.vcf: %.vcf
-	$(GATK_COMMAND) -T SelectVariants $(GATK_OPTION_SELECTSNPVARIANTS) --variant $< --out $@.tmp -R $(GATK_REF) && mv $@.tmp $@
+	$(GATK_COMMAND) -T SelectVariants $(GATK_SELECTSNPVARIANTS_OPTIONS) --variant $< --out $@.tmp -R $(GATK_REF) && mv $@.tmp $@
 
 ##############################
 # Multi-sample variant calling
@@ -84,7 +84,7 @@ GATK_BAM_LIST:=
 endif
 
 all.vcf: $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
-	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) $(addprefix -I , $(GATK_BAM_LIST)) -o $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_OPTIONS) $(addprefix -I , $(GATK_BAM_LIST)) -o $@.tmp && mv $@.tmp $@
 
 all.phased.vcf: all.vcf $(GATK_BAM_LIST) $(subst .bam,.bai,$(GATK_BAM_LIST))
-	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_OPTION_READBACKEDPHASING) $(addprefix -I , $(GATK_BAM_LIST)) --variant $< -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_READBACKEDPHASING_OPTIONS) $(addprefix -I , $(GATK_BAM_LIST)) --variant $< -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@

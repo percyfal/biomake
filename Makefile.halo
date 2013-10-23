@@ -253,23 +253,23 @@ PICARD_REF=$(REF)
 endif
 
 # Common options
-ifndef PICARD_OPTION_COMMON
-PICARD_OPTION_COMMON=VALIDATION_STRINGENCY=SILENT
+ifndef PICARD_COMMON_OPTION
+PICARD_COMMON_OPTION=VALIDATION_STRINGENCY=SILENT
 endif
 
 
 # Bam index
 %.bai: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/BuildBamIndex.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) && mv $@.tmp $@
+	$(PICARD_JAVA) $(PICARD_HOME)/BuildBamIndex.jar I=$< O=$@.tmp $(PICARD_COMMON_OPTION) && mv $@.tmp $@
 
-ifndef PICARD_OPTION_SORTSAM
-PICARD_OPTION_SORTSAM=SORT_ORDER=coordinate
+ifndef PICARD_SORTSAM_OPTION
+PICARD_SORTSAM_OPTION=SORT_ORDER=coordinate
 endif
 %.sort.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@
+	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_COMMON_OPTION) $(PICARD_SORTSAM_OPTION) && mv $@.tmp $@
 
 %.dup.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
+	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_COMMON_OPTION) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
 
 %.interval_list: $(PICARD_REF)
 	$(PICARD_JAVA) $(PICARD_HOME)/CreateSequenceDictionary.jar R=$< O=$@.tmp && mv $@.tmp $@
@@ -320,104 +320,104 @@ GATK_KNOWN_SITES=$(GATK_DBSNP)
 endif
 
 # Generic program options
-ifndef GATK_OPTION_THREADS
-GATK_OPTION_THREADS=$(THREADS)
+ifndef GATK_THREADS
+GATK_THREADS=$(THREADS)
 endif
 
-ifndef GATK_OPTION_UNIFIEDGENOTYPER
-GATK_OPTION_UNIFIEDGENOTYPER=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_OPTION_THREADS) -R $(GATK_REF)
+ifndef GATK_UNIFIEDGENOTYPER_OPTION
+GATK_UNIFIEDGENOTYPER_OPTION=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
 ifneq ($(GATK_DBSNP),"")
-GATK_OPTION_UNIFIEDGENOTYPER+=--dbsnp $(GATK_DBSNP)
+GATK_UNIFIEDGENOTYPER_OPTION+=--dbsnp $(GATK_DBSNP)
 endif
 ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_OPTION_UNIFIEDGENOTYPER+=-L $(GATK_TARGET_REGIONS)
+GATK_UNIFIEDGENOTYPER_OPTION+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 # Generic genotyping
 %.vcf: %.bam
-	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
+	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_OPTION) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
 ##############################
 # 1. Raw genotypes
 # For identification of realignment target regions
 ##############################
-ifndef GATK_OPTION_RAW_UNIFIEDGENOTYPER
-GATK_OPTION_UNIFIEDGENOTYPER_RAW=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_OPTION_THREADS) -R $(GATK_REF)
+ifndef GATK_UNIFIEDGENOTYPER_RAW_OPTION
+GATK_UNIFIEDGENOTYPER_RAW_OPTION=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
 ifneq ($(GATK_DBSNP),"")
-GATK_OPTION_UNIFIEDGENOTYPER_RAW+=--dbsnp $(GATK_DBSNP)
+GATK_UNIFIEDGENOTYPER_RAW_OPTION+=--dbsnp $(GATK_DBSNP)
 endif
 ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_OPTION_UNIFIEDGENOTYPER_RAW+=-L $(GATK_TARGET_REGIONS)
+GATK_UNIFIEDGENOTYPER_RAW_OPTION+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 
 %.sort.merge.raw.vcf: %.sort.merge.bam
-	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_OPTION_UNIFIEDGENOTYPER_RAW) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
+	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_RAW_OPTION) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
 
 # 2. Realignment target creator
-ifndef GATK_OPTION_REALIGN_CREATOR
-GATK_OPTION_REALIGN_CREATOR=-R $(GATK_REF)
+ifndef GATK_REALIGN_TARGET_CREATOR_OPTION
+GATK_REALIGN_TARGET_CREATOR_OPTION=-R $(GATK_REF)
 ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_OPTION_REALIGN_CREATOR+=-L $(GATK_TARGET_REGIONS)
+GATK_REALIGN_TARGET_CREATOR_OPTION+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 
 %.intervals: %.bam
-	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_OPTION_REALIGN_CREATOR) -I $< -o $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_REALIGN_TARGET_CREATOR_OPTION) -I $< -o $@.tmp && mv $@.tmp $@
 
-ifndef GATK_OPTION_INDEL_REALIGN
-GATK_OPTION_INDEL_REALIGN=-R $(GATK_REF)
+ifndef GATK_INDELREALIGNER_OPTION
+GATK_INDELREALIGNER_OPTION=-R $(GATK_REF)
 endif
 # 3. Indel realignment
 %.realign.bam: %.bam %.intervals %.raw.vcf
-	$(GATK_COMMAND) -T IndelRealigner $(GATK_OPTION_INDEL_REALIGN) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
+	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTION) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
 
 # 4. Recalibration
-ifndef GATK_OPTION_RECAL
-GATK_OPTION_RECAL=-R $(GATK_REF)
+ifndef GATK_BASERECALIBRATOR_OPTION
+GATK_BASERECALIBRATOR_OPTION=-R $(GATK_REF)
 ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_OPTION_RECAL+=-L $(GATK_TARGET_REGIONS)
+GATK_BASERECALIBRATOR_OPTION+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 %.recal_data.grp: %.bam %.bai
 	$(eval KNOWN_SITES=$(addprefix -knownSites ,$(GATK_KNOWN_SITES)))
-	$(GATK_COMMAND) -T BaseRecalibrator $(GATK_OPTION_RECAL) $(KNOWN_SITES) -I $< -o $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T BaseRecalibrator $(GATK_BASERECALIBRATOR_OPTION) $(KNOWN_SITES) -I $< -o $@.tmp && mv $@.tmp $@
 
-ifndef GATK_OPTION_PRINTREADS
-GATK_OPTION_PRINTREADS=-R $(GATK_REF)
+ifndef GATK_PRINTREADS_OPTION
+GATK_PRINTREADS_OPTION=-R $(GATK_REF)
 endif
 %.recal.bam: %.bam %.recal_data.grp
-	$(GATK_COMMAND) -T PrintReads $(GATK_OPTION_PRINTREADS) -I $< -BQSR $(lastword $^) -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
+	$(GATK_COMMAND) -T PrintReads $(GATK_PRINTREADS_OPTION) -I $< -BQSR $(lastword $^) -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
 
 # 5. Clipping
-ifndef GATK_OPTION_CLIPREADS
-GATK_OPTION_CLIPREADS=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
+ifndef GATK_CLIPREADS_OPTION
+GATK_CLIPREADS_OPTION=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
 endif
 %.clip.bam: %.bam %.bai
-	$(GATK_COMMAND) -T ClipReads $(GATK_OPTION_CLIPREADS) -I $< -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
+	$(GATK_COMMAND) -T ClipReads $(GATK_CLIPREADS_OPTION) -I $< -o $@.tmp && mv $@.tmp $@ && mv $@.tmp.bai $@.bai
 
 # 6. Generic genotyping; see above
 
 # 7. Variant filtration
-ifndef GATK_OPTION_VARIANTFILTRATION
-GATK_OPTION_VARIANTFILTRATION=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
+ifndef GATK_VARIANTFILTRATION_OPTION
+GATK_VARIANTFILTRATION_OPTION=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
 endif
 %.filtered.vcf: %.vcf
-	$(GATK_COMMAND) -T VariantFiltration $(GATK_OPTION_VARIANTFILTRATION) -R $(GATK_REF) --variant $< --out $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T VariantFiltration $(GATK_VARIANTFILTRATION_OPTION) -R $(GATK_REF) --variant $< --out $@.tmp && mv $@.tmp $@
 
 # 8. Variant evaluation
-ifndef GATK_OPTION_VARIANT_EVAL
-GATK_OPTION_VARIANT_EVAL=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
+ifndef GATK_VARIANT_EVAL_OPTION
+GATK_VARIANT_EVAL_OPTION=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
 ifneq ($(GATK_DBSNP),"")
-GATK_OPTION_VARIANT_EVAL+=--dbsnp $(GATK_DBSNP)
+GATK_VARIANT_EVAL_OPTION+=--dbsnp $(GATK_DBSNP)
 endif
 ifneq ($(GATK_TARGET_REGIONS),"")
-GATK_OPTION_VARIANT_EVAL+=-L $(GATK_TARGET_REGIONS)
+GATK_VARIANT_EVAL_OPTION+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 %.eval_metrics: %.vcf
-	$(GATK_COMMAND) -T VariantEval $(GATK_OPTION_VARIANT_EVAL) -R $(GATK_REF) --eval $< -o $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T VariantEval $(GATK_VARIANT_EVAL_OPTION) -R $(GATK_REF) --eval $< -o $@.tmp && mv $@.tmp $@
 
 ##################################################
 # Sample and flowcell directories
@@ -464,17 +464,17 @@ flowcells: $(FLOWCELL_TARGETS)
 samples: $(SAMPLE_TARGETS)
 
 # NB: Must we put this here? Otherwise FLOWCELL_TARGETS unset?
-ifndef PICARD_OPTION_MERGESAM
-PICARD_OPTION_MERGESAM=CREATE_INDEX=true
+ifndef PICARD_MERGESAM_OPTION
+PICARD_MERGESAM_OPTION=CREATE_INDEX=true
 endif
 # The following rule has as requirement *all* flowcells, but the input
 # files to a given merge operation are the sample-specific bam files
 %.sort.merge.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTION) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
 
 all.bam: $(SAMPLE_TARGETS)
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_MERGESAM) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_COMMON_OPTION) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
 
 halo: all
 

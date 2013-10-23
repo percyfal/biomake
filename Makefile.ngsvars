@@ -23,11 +23,6 @@ ifndef TARGET_REGIONS
 TARGET_REGIONS=
 endif
 
-
-# Utility programs
-ifndef AWK
-AWK=awk
-endif
-ifndef CAT
-CAT=cat
+ifndef BAIT_REGIONS
+BAIT_REGIONS=
 endif

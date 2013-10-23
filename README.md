@@ -3,11 +3,18 @@
 Makefile library for bioinformatics programs, with a focus on
 next-generation sequencing.
 
+# Disclaimer #
+
+Use the make rules at your own risk, and make sure you understand them
+before running any commands. I take no responsibility if you'd happen
+to run a **make clean** in an inappropriate location, removing
+precious data in the process. You have been warned!
+
 # Introduction  #
 
 The makefiles contain general recipies for commonly used
 bioinformatics programs. The use cases reflect the needs I've had and
-are do no means have a comprehensive coverage. Nevertheless, many
+do by no means have a comprehensive coverage. Nevertheless, many
 commands are so commonly used that the recipes may be of general
 interest.
 
@@ -34,14 +41,20 @@ are used to include Makefiles of interest:
 Each Makefile has a set of configurable variables that can be
 customized via the command line or in the "calling" Makefile. I have
 tried to name the variables sensibly, providing namespaces following
-the format PROGRAM_OPTIONS (e.g. GATK_OPTIONS) or
+the format PROGRAM_OPTIONS (e.g. PICARD_OPTIONS) or
 PROGRAM_SUBPROGRAM_OPTIONS (e.g. GATK_SELECTSNPVARIANTS_OPTIONS).
+Similarly, for increased granularity, specific options may be named by
+appending the name of that option as in PROGRAM_OPTION_SPECIFIC (e.g.
+ANGSD_OPTION_ANC).
 
 There are also a set of higher level options that govern general
 behaviour, such as THREADS (number of threads) and JAVA_MEM (java
 memory). Where applicable, these options also have program specific
 options that can be overridden (such as BWA_THREADS and
 GATK_JAVA_MEM).
+
+Unfortunately, the only way to know which configuration variables are
+available is to sift through the relevant Makefiles.
 
 # Pipelines #
 
@@ -70,7 +83,7 @@ https://github.com/percyfal/ngs.test.data):
 Copy the file **example/Makefile.pipeline.halo** to the root directory
 where project data resides. Uncomment relevant sections and set the
 variables. See the included Makefile (**Makefile.halo**) for further
-options. Example commands follow.
+options. 
 
 The pipeline currently does the following:
 
@@ -94,7 +107,9 @@ The pipeline currently does the following:
 
 TODO: add fastqc and picard metrics 
 
-### 1. Make entire pipeline ###
+### Example commands ###
+
+#### 1. Make entire pipeline ####
 
 Run with '-n' flag to monitor commands:
 
@@ -105,24 +120,24 @@ Make all target with one of the following commands:
 	make all
 	make all.filtered.eval_metrics
 	
-### 2. Make flowcell targets ###
+#### 2. Make flowcell targets ####
 
 	make flowcells
 	
-### 3. Make sample targets ###
+#### 3. Make sample targets ####
 
 	make samples
 	
-### 4. Clean up ###
+#### 4. Clean up ####
 
 The clean target removes everything.
 
 	make clean
 	
-### 5. Running a specific sample ###
+#### 5. Running a specific sample ####
 
 	make all SAMPLES=P001_101_index3
 
-### 6. Running a specific flowcell ###
+#### 6. Running a specific flowcell ####
 
 TODO.

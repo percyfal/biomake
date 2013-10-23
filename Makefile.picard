@@ -27,22 +27,25 @@ PICARD_REF=$(REF)
 endif
 
 # Common options
-ifndef PICARD_OPTION_COMMON
-PICARD_OPTION_COMMON=VALIDATION_STRINGENCY=SILENT
+ifndef PICARD_OPTIONS_COMMON
+PICARD_OPTIONS_COMMON=VALIDATION_STRINGENCY=SILENT
+endif
+ifndef PICARD_OPTIONS
+PICARD_OPTIONS=$(PICARD_OPTIONS_COMMON)
 endif
 
 # Bam index
 %.bai: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/BuildBamIndex.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) && mv $@.tmp $@
+	$(PICARD_JAVA) $(PICARD_HOME)/BuildBamIndex.jar I=$< O=$@.tmp $(PICARD_OPTIONS) && mv $@.tmp $@
 
 ifndef PICARD_OPTION_SORTSAM
 PICARD_OPTION_SORTSAM=SORT_ORDER=coordinate
 endif
 %.sort.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@
+	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTIONS) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@
 
 %.dup.bam: %.bam
-	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTION_COMMON) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
+	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTIONS) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
 
 %.interval_list: $(PICARD_REF)
 	$(PICARD_JAVA) $(PICARD_HOME)/CreateSequenceDictionary.jar R=$< O=$@.tmp && mv $@.tmp $@

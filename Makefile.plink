@@ -11,22 +11,22 @@ ifndef PLINK_OPTIONS_COMMON
 PLINK_OPTIONS_COMMON=--noweb
 endif
 ifndef PLINK_OPTIONS
-PLINK_OPTIONS=
+PLINK_OPTIONS=$(PLINK_OPTIONS_COMMON)
 endif
 
 %.r2.ld: %.ped
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --r2 --out $(@:.ld=) 
+	$(PLINK) $(PLINK_OPTIONS)  --file $* --r2 --out $(@:.ld=) 
 
 %.r2.ld: %.bed
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --r2 --out $(@:.ld=)
+	$(PLINK) $(PLINK_OPTIONS)  --bfile $* --r2 --out $(@:.ld=)
 
 %.bed: %.ped
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --file $* --make-bed --out $*
+	$(PLINK) $(PLINK_OPTIONS)  --file $* --make-bed --out $*
 
 %.blocks: %.bed
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --blocks --out $*
+	$(PLINK) $(PLINK_OPTIONS)  --bfile $* --blocks --out $*
 
 %.chr$(PLINK_CHR).bed: %.bed
-	$(PLINK) $(PLINK_OPTIONS) $(PLINK_OPTIONS_COMMON) --bfile $* --chr $(PLINK_CHR) --make-bed --out $*.chr$(PLINK_CHR)
+	$(PLINK) $(PLINK_OPTIONS)  --bfile $* --chr $(PLINK_CHR) --make-bed --out $*.chr$(PLINK_CHR)
 
 
