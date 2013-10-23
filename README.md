@@ -151,7 +151,7 @@ The clean target removes everything.
 	
 #### 5. Running a specific sample ####
 
-	make all SAMPLES=P001_101_index3
+	make halo SAMPLES=P001_101_index3
 
 #### 6. Running a specific flowcell ####
 
