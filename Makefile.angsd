@@ -4,6 +4,9 @@ MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
 ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
 include $(MAKEDIR)Makefile.ngsvars
 endif
+ifeq ($(findstring Makefile.general,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.general
+endif
 
 # Angsd search path. Since some of the programs are located in the
 # misc subfolder, use absolute search path. The user must set this
@@ -172,6 +175,17 @@ ANGSD_BGID_DOSTAT_OPTIONS=-step $(ANGSD_OPTION_STEP) -win $(ANGSD_OPTION_WINDOW)
 endif
 %.thetas.gz.bgid_pestPG: %.thetas.gz %.thetas.gz.bin
 	$(BGID) do_stat $< $(ANGSD_BGID_DOSTAT_OPTIONS)
+
+# Bed file is zero based; hence subtract one from first coordinate
+%.bed: %.mafs.gz
+	$(ZCAT) $< | $(GREP) -v chromo | $(AWK) '{print $$1,$$2-1,$$2}' > $@.tmp && mv $@.tmp $@
+
+GZIP_OPTIONS=-c
+%.pos.gz: %.bed
+	$(AWK) '{print $$1, $$3}' $< | $(GZIP) $(GZIP_OPTIONS) > $@.tmp && mv $@.tmp $@
+
+%.pos: %.bed
+	$(AWK) '{print $$1, $$3}' $< > @.tmp && mv $@.tmp $@
 
 
 ##############################

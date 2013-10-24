@@ -9,6 +9,17 @@ endif
 ifndef CAT
 CAT=cat
 endif
+ifndef ZCAT
+ZCAT=zcat
+endif
+ifndef GREP
+GREP=grep
+endif
+ifndef GZIP
+GZIP=gzip
+GZIP_OPTIONS=
+endif
+
 
 
 ##############################
@@ -122,14 +133,14 @@ endif
 	$(SBATCH) $(SBATCH_OPTIONS) $@
 endif
 
-# logging
+# logging - output suffix = .runlog so this rule is always run
 %.log:
 	echo -e "\n\n"`date`"\n\n" >> $@.tmp
-	$(MAKE) $* 2>&1 | tee -a $@.tmp && mv $@.tmp $@
+	$(MAKE) $(MFLAGS) $* 2>&1 | tee -a $@.tmp && mv $@.tmp $*.runlog
 
 
 # Want %.log to run every time but this doesn't help?!?
-.PHONY: %.log general-settings  general-header
+.PHONY: general-settings general-header
 
 # http://blog.melski.net/2010/11/30/makefile-hacks-print-the-value-of-any-variable/
 print-%:
@@ -139,4 +150,4 @@ general-header:
 	@echo -e "\nMakefile.general options"
 	@echo "========================"
 
-general-settings: general-header print-SBATCH print-SBATCH_OPTIONS print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_EXTRA_HEADER
+general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_EXTRA_HEADER
