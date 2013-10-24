@@ -1,5 +1,15 @@
 #-*- makefile -*-
 
+# SLURM settings - for submission with sbatch 
+# NB: these variables need to be set
+# SLURM_ACCOUNT=
+# SLURM_TIME=01:00:00
+# SLURM_PARTITION=devel
+# SLURM_MAILUSER=
+# SLURM_WORKDIR=
+# SLURM_MAKE_J=4
+
+
 # Change if naming scheme is different from SciLife production names
 # SAMPLE_PREFIX=P00
 #

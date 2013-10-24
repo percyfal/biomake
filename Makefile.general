@@ -20,8 +20,6 @@ GZIP=gzip
 GZIP_OPTIONS=
 endif
 
-
-
 ##############################
 # sbatch submission
 ##############################
@@ -68,6 +66,10 @@ ifndef SLURM_WORKDIR
 SLURM_WORKDIR=
 endif
 
+# username - there must be an easier way to get this info
+ifndef SLURM_USER
+$(eval SLURM_USER=$(shell echo $$USER))
+endif
 # Mailtype variable
 ifndef SLURM_MAILTYPE
 SLURM_MAILTYPE=All
@@ -91,47 +93,54 @@ endif
 ifndef SLURM_COMMAND
 SLURM_COMMAND=
 endif
+# SLURM make_j option: number of parallel processes - not necessarily
+# same as number of cores
+ifndef SLURM_MAKE_J
+SLURM_MAKE_J=1
+endif
 
-
+# extra output suffix = .sh so this rule is always run
 %.sbatch:
 ifeq ($(SLURM_ACCOUNT),)
 	echo -e No SLURM_ACCOUNT defined; exiting!
 else
-	echo -e "#!/bin/bash -l" > $@ 
-	echo -e "#SBATCH" -p $(SLURM_PARTITION) >> $@ 
+	echo -e "#!/bin/bash -l" > $@.sh 
+	echo -e "#SBATCH" -p $(SLURM_PARTITION) >> $@.sh 
 ifeq ($(SLURM_PARTITION),halvan)
-	echo -e "#SBATCH" -M $(SLURM_PARTITION) >> $@
+	echo -e "#SBATCH" -M $(SLURM_PARTITION) >> $@.sh
 endif
-	echo -e "#SBATCH" -A $(SLURM_ACCOUNT) >> $@ 
-	echo -e "#SBATCH" -n $(SLURM_N_CORES) >> $@ 
+	echo -e "#SBATCH" -A $(SLURM_ACCOUNT) >> $@.sh 
+	echo -e "#SBATCH" -n $(SLURM_N_CORES) >> $@.sh 
 ifeq ($(SLURM_PARTITION),node)
-	echo -e "#SBATCH" -N $(SLURM_N_NODES) >> $@ 
+	echo -e "#SBATCH" -N $(SLURM_N_NODES) >> $@.sh 
 endif
-	echo -e "#SBATCH" -t $(SLURM_TIME) >> $@ 
+	echo -e "#SBATCH" -t $(SLURM_TIME) >> $@.sh 
 ifneq ($(SLURM_JOBNAME),)
-	echo -e "#SBATCH" -J $(SLURM_JOBNAME) >> $@ 
+	echo -e "#SBATCH" -J $(SLURM_JOBNAME) >> $@.sh 
 else
-	echo -e "#SBATCH" -J $* >> $@ 
+	echo -e "#SBATCH" -J $* >> $@.sh 
 endif
 ifneq ($(SLURM_WORKDIR),)
-	echo -e "#SBATCH" -D $(SLURM_WORKDIR) >> $@
+	echo -e "#SBATCH" -D $(SLURM_WORKDIR) >> $@.sh
 endif
 ifneq ($(SLURM_EXTRA_HEADER),)
-	echo -e $(SLURM_EXTRA_HEADER) >> $@ 
+	echo -e $(SLURM_EXTRA_HEADER) >> $@.sh 
 endif
-	echo -e "#SBATCH --mail-type="$(SLURM_MAILTYPE) >> $@
+	echo -e "#SBATCH --mail-type="$(SLURM_MAILTYPE) >> $@.sh
 ifneq ($(SLURM_MAILUSER),)
-	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@
+	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@.sh
 endif
-	echo -e "\n\n#" `date` >> $@ 
-	echo -e "\n\n"$(SLURM_PREHOOK) >> $@
+	echo -e "\n\n#" `date` >> $@.sh 
+	echo -e "\n\n"$(SLURM_PREHOOK) >> $@.sh
 ifneq ($(SLURM_COMMAND),)
-	echo -e $(SLURM_COMMAND) >> $@
+	echo -e $(SLURM_COMMAND) >> $@.sh
 else
-	echo -e $(MAKE) $*.log >> $@
+	echo -e $(MAKE) $*.log >> $@.sh
 endif
-	$(SBATCH) $(SBATCH_OPTIONS) $@
+	$(SBATCH) $(SBATCH_OPTIONS) $@.sh
 endif
+
+#JOB=`sbatch --output=/dev/null --error=/dev/null $@ $BS 2>&1 | egrep -o -e "\b[0-9]+$"`
 
 # logging - output suffix = .runlog so this rule is always run
 %.log:
@@ -150,4 +159,4 @@ general-header:
 	@echo -e "\nMakefile.general options"
 	@echo "========================"
 
-general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_EXTRA_HEADER
+general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_MAKE_J print-SLURM_EXTRA_HEADER
