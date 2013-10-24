@@ -1,5 +1,8 @@
 #-*- makefile -*-
 
+# Makefile variable: make sure to use make version >=3.82
+# MAKE=/path/to/make
+
 # SLURM settings - for submission with sbatch 
 # NB: these variables need to be set
 # SLURM_ACCOUNT=

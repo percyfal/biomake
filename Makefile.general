@@ -2,6 +2,11 @@
 
 # General rules
 
+# Make: make sure to use version >= 3.82
+ifndef MAKE
+MAKE=make
+endif
+
 # Utility programs
 ifndef AWK
 AWK=awk
