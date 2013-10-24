@@ -76,6 +76,10 @@ ifeq ($(SLURM_PARTITION),core)
 SLURM_N_CORES=1
 endif
 endif
+# SLURM command
+ifndef SLURM_COMMAND
+SLURM_COMMAND=
+endif
 
 
 %.sbatch:
@@ -110,7 +114,11 @@ ifneq ($(SLURM_MAILUSER),)
 endif
 	echo -e "\n\n#" `date` >> $@ 
 	echo -e "\n\n"$(SLURM_PREHOOK) >> $@
+ifneq ($(SLURM_COMMAND),)
+	echo -e $(SLURM_COMMAND) >> $@
+else
 	echo -e $(MAKE) $*.log >> $@
+endif
 	$(SBATCH) $(SBATCH_OPTIONS) $@
 endif
 

@@ -7,10 +7,9 @@
 
 # The directory of this makefile
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
-include $(MAKEDIR)Makefile.ngsvars
-endif
 
+# Makefile includes
+include $(MAKEDIR)Makefile.ngsvars
 include $(MAKEDIR)/Makefile.general
 include $(MAKEDIR)/Makefile.sequenceprocessing
 include $(MAKEDIR)/Makefile.samtools
@@ -43,6 +42,34 @@ halo: all
 
 all: $(HALO_TARGET_PREFIX).filtered.eval_metrics
 
+# Batched SLURM submission:
+#
+# 1. partition target list into batch sized lists
+#
+# 2. submit each list independently, tracking the SLURM id
+#
+# 3. submit the merge target, with the tracked SLURM ids as
+#    dependencies
+#
+# Comments:
+# - not sure how MFLAGS vs MAKEFLAGS work
+# - how would this be done with qmake? 
+#
+HALO_BATCH_SIZE=2
+halo-sbatch:
+	@echo Running halo-sbatch recipe: submit data to queue manager
+	@echo All sample targets: $(SAMPLE_TARGETS)
+	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
+	@i=0; sbatchcounter=0; TARGETS=; for TGT in $(TRIMSYNC_TARGETS); do \
+	let i=i+1; \
+	TARGETS="$$TARGETS $$TGT"; \
+	if [ $$(($$i % $(HALO_BATCH_SIZE))) == 0 ] || [ $$i == $(NTARGETS) ]; then  \
+	let sbatchcounter=sbatchcounter+1; \
+	$(MAKE) flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) $(MFLAGS) samples SAMPLES=$$TARGETS"; \
+	TARGETS=; \
+	fi \
+	done ;
+
 ##############################
 # bwa alignment
 ##############################
@@ -52,7 +79,6 @@ all: $(HALO_TARGET_PREFIX).filtered.eval_metrics
 	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
 
 # Add read group information
-# This rule is so specific it is kept here
 %.sort.rg.bam: %.sort.bam
 	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
 	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
@@ -62,8 +88,9 @@ all: $(HALO_TARGET_PREFIX).filtered.eval_metrics
 ##############################
 # Merge rule 
 ##############################
-# The following rule has as requirement *all* flowcells, but the input
-# files to a given merge operation are the sample-specific bam files
+# The following rule has as requirement *all* flowcell targets, but
+# the input files to a given merge operation are the sample-specific
+# bam files
 %.sort.merge.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
@@ -127,5 +154,5 @@ halo-header:
 	@echo -e "\nMakefile.halo options"
 	@echo "====================="
 
-halo-settings: halo-header print-HALO_TARGET_PREFIX print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
+halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
 
