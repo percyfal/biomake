@@ -23,12 +23,12 @@ HALO_TARGET_PREFIX=halo
 endif
 
 # Input label
-MERGE_INPUT_SUFFIX=.sort.rg.bam
+MERGE_INPUT_SUFFIX=.halo.sort.rg.bam
 
 # Targets
 TRIMSYNC_TARGETS=$(subst .fastq.gz,.trimmed.sync.fastq.gz,$(FASTQFILES))
 FLOWCELL_TARGETS=$(subst $(READ1_LABEL).fastq.gz,$(MERGE_INPUT_SUFFIX),$(FASTQFILES))
-SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.realign.recal.clip.bam)
+SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.halo.realign.recal.clip.bam)
 
 # Target rules
 trimsync: $(TRIMSYNC_TARGETS)
@@ -36,7 +36,10 @@ flowcells: $(FLOWCELL_TARGETS)
 samples: $(SAMPLE_TARGETS)
 
 $(HALO_TARGET_PREFIX).bam: $(SAMPLE_TARGETS)
+	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
+	@if [ $(NTARGETS) != 0 ]; then \
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+	fi
 
 halo: all
 
@@ -75,11 +78,12 @@ halo-sbatch:
 ##############################
 # Redefine bam recipe to get correct file suffixes
 # Only define bam rule - use pipe to avoid unnecessary sam file creation
-%.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
+# Trick: add .halo.bam to override Makefile.bwa rule
+%.halo.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
 	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
 
 # Add read group information
-%.sort.rg.bam: %.sort.bam
+%.halo.sort.rg.bam: %.halo.sort.bam
 	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
 	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
 	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@.bam=).bai
@@ -91,7 +95,8 @@ halo-sbatch:
 # The following rule has as requirement *all* flowcell targets, but
 # the input files to a given merge operation are the sample-specific
 # bam files
-%.sort.merge.bam: $(FLOWCELL_TARGETS)
+# Use trick again to differentiate from Makefile.picard target
+%.sort.merge.halo.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
 
@@ -154,5 +159,5 @@ halo-header:
 	@echo -e "\nMakefile.halo options"
 	@echo "====================="
 
-halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
+halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS print-TRIMSYNC_TARGETS print-FLOWCELL_TARGETS print-SAMPLE_TARGETS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
 
