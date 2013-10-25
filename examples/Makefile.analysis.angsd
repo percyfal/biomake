@@ -1,0 +1,144 @@
+#-*- makefile -*-
+
+# Angsd example makefile
+
+# Makefile variable: make sure to use make version >=3.82
+# MAKE=/path/to/make
+
+# SLURM settings - for submission with sbatch 
+# NB: account must be set, all other variables have defaults which may
+# or may not do what you want
+# SLURM_ACCOUNT=
+# SLURM_WORKDIR=
+# SLURM_TIME=01:00:00
+# SLURM_PARTITION=devel
+# SLURM_MAILUSER=
+# SLURM_MAKE_J=4
+# SLURM_MODULES=bwa/0.7.5 GATK/2.3.6
+# SLURM_PREHOOK=
+
+# Useful include files
+include ~/lib/make/Makefile.general
+include ~/lib/make/Makefile.angsd
+include ~/lib/make/Makefile.samtools
+include ~/lib/make/Makefile.picard
+include ~/lib/make/Makefile.bedtools
+
+
+##############################
+# General options
+##############################
+# .PRECIOUS: %.sfs %.list %_prior.sfs
+
+# Version and search path
+# ANGSD_VERSION=0.549
+# ANGSD_PATH=/path/to/angsg/angsd$(ANGSD_VERSION)
+# NGSTOOLS_PATH=/path/to/ngstools
+
+# Number of sites; needed for sfs prior ml optimization with emOptim2
+# ANGSD_OPTION_SITES=
+
+# THREADS=8
+# ANGSD_OPTION_CHR=
+
+# Set populations to list of prefixes, e.g. A B C D. These should
+# correspond to the names used to create the list files (see below),
+# e.g. A.list
+# POPULATIONS=A B C D
+
+##############################
+# Setting up the input
+##############################
+# Most angsd programs take as input files that list bam files to be
+# used. Makefile.angsd has rules that require the prerequisite %.list. 
+
+# The following example lists file in an input directory that match
+# %[0-9][0-9].bam
+#
+# %.list:
+# 	ls -1 /path/to/inputdata/$(firstword $(subst ., ,$@))[0-9][0-9].bam | sort > $@.tmp && mv $@.tmp $@
+
+# Phony target to generate lists
+# lists: $(addsuffix .list,$(POPULATIONS))
+
+##################################################
+# Generating sfs priors
+##################################################
+# To differentiate from regular list files, add prior label
+
+# %_prior.list:
+# 	ls -1 /path/to/inputdata/$(firstword $(subst ., ,$@))[0-9][0-9].bam | sort > $@.tmp && mv $@.tmp $@
+# priorlists: $(addsuffix _prior.list,$(POPULATIONS))
+
+# MLTARGETS:=$(addsuffix _prior.sfs.em2.ml.log, $(POPULATIONS))
+# sfspriors: priorlists $(MLTARGETS)
+
+##############################
+# Alternatively: calculate priors after removing regions of low mappability with GEM
+##############################
+
+# Regions of low mappability can generate weird-looking priors. One
+# way to fix this is to remove regions with low mappability and filter
+# out these sites when generating the prior. Make with command 'make
+# ref.mappability'
+# GEM_PATH=
+
+# Then convert mappability file to list file with sites to filter out
+# (script in biomake/scripts folder)
+# sites.list: reference.mappability
+# 	filterLowMappability.pl $< > $@.tmp && mv $@.tmp $@
+
+# Finally calculate prior using the filter list, using the same
+# command as above ('make sfspriors'), but with modified options
+# FILTER=sites.list
+# ifeq ($(wildcard $(FILTER)),)
+# ANGSD_EMOPTIM2_OPTIONS+=-filter $(FILTER)
+# endif
+
+
+##################################################
+# doMaf, doMajorMinor - calculate minor allele frequencies and major/minor pairs
+##################################################
+# When polarizing wrt an ancestral sequence, angsd throws out sites
+# where the ancestral state is not in the inferred (major,minor) tuple
+# as obtained by -doMajorMinor. In addition, sites with zero coverage
+# are discarded. If one wants to do a site-by-site comparison between
+# populations, it may be beneficial to first generate a list of sites
+# that are common between populations. This can be achieved with
+# intersectBed based on the position output from doMaf. First write a
+# rule for generating commonsites:
+
+# 
+# AB.mafs.bed: A.mafs.bed B.mafs.bed
+# 	$(BEDTOOLS_HOME)/intersectBed -a A.mafs.bed -b B.mafs.bed -sorted > $@.tmp && mv $@.tmp $@
+# ABC.mafs.bed: AB.mafs.bed C.mafs.bed
+# 	$(BEDTOOLS_HOME)/intersectBed -a AB.mafs.bed -b C.mafs.bed -sorted > $@.tmp && mv $@.tmp $@
+# and so on 
+
+# There is a %.bed: %.pos rule in Makefile.angsd
+# COMMON_SITES=ABCD.pos
+# Use position file info if present
+# ifneq ($(wildcard $(COMMON_SITES)),)
+# ANGSD_DOMAFS_OPTIONS+=-filter $(COMMON_SITES)
+# endif
+
+# mafs: ABCD.pos A.mafs.gz B.mafs.gz C.mafs.gz D.mafs.gz
+
+##################################################
+# doThetas - calculate thetas
+##################################################
+# Thetas can be generated on a chromosome by chromosome basis using
+# the ANGSD_OPTION_CHR option.
+
+# Make target list for all populations, 100 scaffolds, 
+# LAST:=100
+# NUMBERS:=$(shell seq 1 ${LAST})
+# CHROMOSOMES=$(foreach i,$(NUMBERS),scaffold_$(i)) chrM
+
+# Setup thetas targets
+# THETASTARGETS=$(foreach p,$(POPULATIONS), $(addprefix $(p)_, $(addsuffix .thetas.gz, $(foreach c,$(CHROMOSOMES),$(c)))))
+# thetas: $(THETASTARGETS)
+
+# Setup pestPG targets
+# PESTTARGETS=$(subst gz,gz.bgid_pestPG,$(THETASTARGETS))
+# pestpg: $(PESTTARGETS)
