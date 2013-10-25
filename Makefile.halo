@@ -10,12 +10,12 @@ MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
 
 # Makefile includes
 include $(MAKEDIR)Makefile.ngsvars
-include $(MAKEDIR)/Makefile.general
-include $(MAKEDIR)/Makefile.sequenceprocessing
-include $(MAKEDIR)/Makefile.samtools
-include $(MAKEDIR)/Makefile.bwa
-include $(MAKEDIR)/Makefile.picard
-include $(MAKEDIR)/Makefile.gatk
+include $(MAKEDIR)Makefile.general
+include $(MAKEDIR)Makefile.sequenceprocessing
+include $(MAKEDIR)Makefile.samtools
+include $(MAKEDIR)Makefile.bwa
+include $(MAKEDIR)Makefile.picard
+include $(MAKEDIR)Makefile.gatk
 
 # Output name
 ifndef HALO_TARGET_PREFIX
@@ -54,10 +54,6 @@ all: $(HALO_TARGET_PREFIX).filtered.eval_metrics
 # 3. submit the merge target, with the tracked SLURM ids as
 #    dependencies
 #
-# Comments:
-# - not sure how MFLAGS vs MAKEFLAGS work
-# - how would this be done with qmake? 
-#
 ifndef HALO_BATCH_SIZE
 HALO_BATCH_SIZE=8
 endif
@@ -72,10 +68,13 @@ halo-sbatch:
 	if [ $$(($$i % $(HALO_BATCH_SIZE))) == 0 ] || [ $$i == $(NTARGETS) ]; then  \
 	let sbatchcounter=sbatchcounter+1; \
 	$(MAKE) flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err ;\
+	$(MAKE) halo-settings SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err > flowcells-$$sbatchcounter.settings; \
+	$(MAKE) -pn flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err >> flowcells-$$sbatchcounter.settings; \
 	JOBNAMES="$$JOBNAMES,flowcells-$$sbatchcounter"; \
 	SAMPLELIST=; \
 	fi \
 	done ; 
+
 # Add sbatch submission of entire pipeline with waitfor requirements
 # based on the submitted jobs above. I have not figured out how to get
 # the JOBIDS easily from slurm output though.
@@ -173,5 +172,19 @@ halo-header:
 	@echo -e "\nMakefile.halo options"
 	@echo "====================="
 
-halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS print-TRIMSYNC_TARGETS print-FLOWCELL_TARGETS print-SAMPLE_TARGETS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
+halo-targets:
+	@echo -e "\nhalo targets"
+	@echo "---------------------"
+
+print-SAMPLE_TARGETS:
+	@echo -e '\nSAMPLE_TARGETS=$(SAMPLE_TARGETS)'
+
+print-TRIMSYNC_TARGETS:
+	@echo -e '\nTRIMSYNC_TARGETS=$(TRIMSYNC_TARGETS)'
+
+print-FLOWCELL_TARGETS:
+	@echo -e '\nFLOWCELL_TARGETS=$(FLOWCELL_TARGETS)'
+
+
+halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS halo-targets print-TRIMSYNC_TARGETS print-FLOWCELL_TARGETS print-SAMPLE_TARGETS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
 

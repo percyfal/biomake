@@ -74,6 +74,15 @@ endif
 print-%:
 	@echo '$*=$($*)'
 
+print-SAMPLES:
+	@echo -e '\nSAMPLES=$(SAMPLES)'
+
+print-FLOWCELLRUNS:
+	@echo -e '\nFLOWCELLRUNS=$(FLOWCELLRUNS)'
+
+print-FASTQFILES:
+	@echo -e '\nFASTQFILES=$(FASTQFILES)'
+
 ngsvars-header:
 	@echo -e "\nMakefile.ngsvars options"
 	@echo "========================"
