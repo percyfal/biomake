@@ -66,6 +66,13 @@ endif
 ifndef SLURM_JOBNAME
 SLURM_JOBNAME=
 endif
+# Logging
+ifndef SLURM_OUT
+SLURM_OUT=
+endif
+ifndef SLURM_ERR
+SLURM_ERR=
+endif
 # Workdir variable
 ifndef SLURM_WORKDIR
 SLURM_WORKDIR=
@@ -103,6 +110,10 @@ endif
 ifndef SLURM_MAKE_J
 SLURM_MAKE_J=1
 endif
+# SLURM_MODULES: list of modules to load
+ifndef SLURM_MODULES
+SLURM_MODULES=
+endif
 
 # extra output suffix = .sh so this rule is always run
 %.sbatch:
@@ -125,6 +136,12 @@ ifneq ($(SLURM_JOBNAME),)
 else
 	echo -e "#SBATCH" -J $* >> $@.sh 
 endif
+ifneq ($(SLURM_OUT),)
+	echo -e "#SBATCH" -o $(SLURM_OUT) >> $@.sh
+endif
+ifneq ($(SLURM_ERR),)
+	echo -e "#SBATCH" -e $(SLURM_ERR) >> $@.sh
+endif
 ifneq ($(SLURM_WORKDIR),)
 	echo -e "#SBATCH" -D $(SLURM_WORKDIR) >> $@.sh
 endif
@@ -136,6 +153,9 @@ ifneq ($(SLURM_MAILUSER),)
 	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@.sh
 endif
 	echo -e "\n\n#" `date` >> $@.sh 
+ifneq ($(SLURM_MODULES),)
+	echo -e $(addsuffix "\n", $(addprefix "module load ",$(SLURM_MODULES))) >> $@.sh
+endif
 	echo -e "\n\n"$(SLURM_PREHOOK) >> $@.sh
 ifneq ($(SLURM_COMMAND),)
 	echo -e $(SLURM_COMMAND) >> $@.sh
@@ -160,8 +180,13 @@ endif
 print-%:
 	@echo '$*=$($*)'
 
+general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS general-slurm-header print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_OUT print-SLURM_ERR print-SLURM_MODULES print-SLURM_MAKE_J print-SLURM_EXTRA_HEADER print-SLURM_PREHOOK
+
 general-header:
 	@echo -e "\nMakefile.general options"
 	@echo "========================"
 
-general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_MAKE_J print-SLURM_EXTRA_HEADER
+
+general-slurm-header:
+	@echo -e "\nSLURM settings"
+	@echo "------------------------"

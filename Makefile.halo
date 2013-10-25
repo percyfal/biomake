@@ -64,19 +64,24 @@ endif
 halo-sbatch:
 	@echo Running halo-sbatch recipe: submit data to queue manager
 	@echo All sample targets: $(SAMPLE_TARGETS)
-	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
-	@i=0; sbatchcounter=0; TARGETS=; JOBNAMES=""; for TGT in $(SAMPLE_TARGETS); do \
+	@echo All samples: $(SAMPLES)
+	@$(eval NTARGETS=$(shell echo $(SAMPLES) | awk '{print NF}'))
+	@i=0; sbatchcounter=0; SAMPLELIST=; JOBNAMES=""; for SMP in $(SAMPLES); do \
 	let i=i+1; \
-	TARGETS="$$TARGETS$$TGT "; \
+	SAMPLELIST="$$SAMPLELIST$$SMP "; \
 	if [ $$(($$i % $(HALO_BATCH_SIZE))) == 0 ] || [ $$i == $(NTARGETS) ]; then  \
 	let sbatchcounter=sbatchcounter+1; \
-	$(MAKE) flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLE_TARGETS=$$TARGETS > flowcells-$$sbatchcounter.log 2> flowcells-$$sbatchcounter.err"; \
+	$(MAKE) flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err ;\
 	JOBNAMES="$$JOBNAMES,flowcells-$$sbatchcounter"; \
-	TARGETS=; \
+	SAMPLELIST=; \
 	fi \
 	done ; 
+# Add sbatch submission of entire pipeline with waitfor requirements
+# based on the submitted jobs above. I have not figured out how to get
+# the JOBIDS easily from slurm output though.
 
-#JOBIDS=$(shell `jobinfo -n $$JOBNAMES -u $(SLURM_USER) | $(GREP) $(SLURM_ACCOUNT) | $(AWK) '{print $$1}' `); \
+# JOBIDS=$(shell `jobinfo -n $$JOBNAMES -u $(SLURM_USER) | $(GREP) $(SLURM_ACCOUNT) | $(AWK) '{print $$1}' `); \
+
 ##############################
 # bwa alignment
 ##############################
@@ -98,7 +103,6 @@ halo-sbatch:
 # The following rule has as requirement *all* flowcell targets, but
 # the input files to a given merge operation are the sample-specific
 # bam files
-# Use trick again to differentiate from Makefile.picard target
 %.sort.merge.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
@@ -120,7 +124,7 @@ endif
 %.raw.vcf: %.bam
 	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_RAW_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
-# 2. Realignment target creator - add dependency on raw.vcf for next step
+# 2. Realignment target creator - add dependency on raw.vcf for next step, otherwise default rule is run
 %.intervals: %.bam %.raw.vcf
 	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_REALIGN_TARGET_CREATOR_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@
 
@@ -129,17 +133,22 @@ endif
 	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTIONS) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
 
 # 4. Recalibration
+# Default recipe
 
 # 5. Clipping
+# Default recipe, set options
 GATK_CLIPREADS_OPTIONS=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
 
 # 6. Generic genotyping
+# Default recipe, modified options
 GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF) --dbsnp $(GATK_DBSNP) -L $(GATK_TARGET_REGIONS)
 
 # 7. Variant filtration - set specific options for Haloplex
+# Default recipe, halo-specific options
 GATK_VARIANTFILTRATION_OPTIONS=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
 
 # 8. Variant evaluation
+# Default recipe, halo-specific options
 GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
 
 ##################################################
