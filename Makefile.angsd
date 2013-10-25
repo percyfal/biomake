@@ -4,6 +4,9 @@ MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
 ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
 include $(MAKEDIR)Makefile.ngsvars
 endif
+ifeq ($(findstring Makefile.general,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.general
+endif
 
 # Angsd search path. Since some of the programs are located in the
 # misc subfolder, use absolute search path. The user must set this
@@ -18,8 +21,8 @@ ifndef ANGSD
 ANGSD=$(ANGSD_PATH)/angsd
 endif
 # emoptim executable
-ifndef EMOPTIM
-EMOPTIM=$(ANGSD_PATH)/misc/emOptim
+ifndef ANGSD_EMOPTIM
+ANGSD_EMOPTIM=$(ANGSD_PATH)/misc/emOptim
 endif
 # emoptim2 executable
 ifndef ANGSD_EMOPTIM2
@@ -67,6 +70,9 @@ endif
 ifndef ANGSD_OPTION_ANC
 ANGSD_OPTION_ANC=$(REF)
 endif
+ifndef ANGSD_OPTION_REF
+ANGSD_OPTION_REF=$(REF)
+endif
 
 # Window sizes and steps for thetas calculations
 ifndef ANGSD_OPTION_WINDOW
@@ -83,6 +89,10 @@ endif
 
 ifndef ANGSD_OPTION_NCHR
 ANGSD_OPTION_NCHR=
+endif
+
+ifndef ANGSD_OPTION_SITES
+ANGSD_OPTION_SITES=
 endif
 
 # Precious files
@@ -105,7 +115,7 @@ ANGSD_EMOPTIM2_OPTIONS=-maxIter $(ANGSD_OPTION_MAXITER) -P $(ANGSD_OPTION_THREAD
 ifdef ANGSD_OPTION_TOLE
 ANGSD_EMOPTIM2_OPTIONS+=-tole $(ANGSD_OPTION_TOLE)
 endif
-ifdef ANGSD_OPTION_SITES
+ifneq ($(ANGSD_OPTION_SITES),)
 ANGSD_EMOPTIM2_OPTIONS+=-nSites $(ANGSD_OPTION_SITES)
 endif
 endif
@@ -173,6 +183,16 @@ endif
 %.thetas.gz.bgid_pestPG: %.thetas.gz %.thetas.gz.bin
 	$(BGID) do_stat $< $(ANGSD_BGID_DOSTAT_OPTIONS)
 
+# Bed file is zero based; hence subtract one from first coordinate
+%.bed: %.mafs.gz
+	$(ZCAT) $< | $(GREP) -v chromo | $(AWK) '{print $$1,$$2-1,$$2}' > $@.tmp && mv $@.tmp $@
+
+%.pos.gz: %.bed
+	$(AWK) '{print $$1, $$3}' $< | $(GZIP) -c > $@.tmp && mv $@.tmp $@
+
+%.pos: %.bed
+	$(AWK) '{print $$1, $$3}' $< > $@.tmp && mv $@.tmp $@
+
 
 ##############################
 # ngsTools
@@ -181,8 +201,8 @@ endif
 ifndef NGSTOOLS_PATH
 NGSTOOLS_PATH=.
 endif
-ifndef NGSFST
-NGSFST=$(NGSTOOLS_PATH)/ngsFST
+ifndef NGSTOOLS_NGSFST
+NGSTOOLS_NGSFST=$(NGSTOOLS_PATH)/ngsFST
 endif
 
 ##############################
@@ -210,14 +230,26 @@ endif
 ##############################
 # settings
 ##############################
-.PHONY: angsd-settings angsd-header
+.PHONY: angsd-settings angsd-header angsd-general-options angsd-program-options utility-programs
 
 print-%:
 	@echo '$*=$($*)'
+
+angsd-settings: angsd-header print-ANGSD_PATH print-ANGSD print-ANGSD_EMOPTIM print-ANGSD_EMOPTIM2 print-ANGSD_OPTIMSFS print-ANGSD_BGID print-ANGSD_CALCSTAT angsd-general-options print-ANGSD_OPTION_THREADS print-ANGSD_OPTION_GL print-ANGSD_OPTION_MAF print-ANGSD_OPTION_MAJORMINOR print-ANGSD_OPTION_REALSFS print-ANGSD_OPTION_ANC print-ANGSD_OPTION_REF print-ANGSD_OPTION_WINDOW print-ANGSD_OPTION_STEP print-ANGSD_OPTION_MAXITER print-ANGSD_OPTION_NCHR print-ANGSD_OPTION_SITES angsd-program-options print-ANGSD_REALSFS_OPTIONS print-ANGSD_EMOPTIM2_OPTIONS print-ANGSD_EMOPTIM_OPTIONS print-ANGSD_OPTIMSFS_OPTIONS print-ANGSD_DOTHETAS_OPTIONS print-ANGSD_DOMAFS_OPTIONS print-ANGSD_DOCOUNTS_OPTIONS print-ANGSD_BGID_DOSTAT_OPTIONS utility-programs print-NGSTOOLS_PATH print-NGSTOOLS_NGSFST print-GEM_PATH print-GEM_INDEXER_OPTIONS print-GEM_MAPPABILITY_OPTIONS
 
 angsd-header:
 	@echo -e "\nMakefile.angsd options"
 	@echo "========================"
 
+angsd-general-options:
+	@echo -e "\nGeneral options"
+	@echo "------------------------"
 
-angsd-settings: angsd-header
+angsd-program-options:
+	@echo -e "\nProgram options"
+	@echo "------------------------"
+
+utility-programs: 
+	@echo -e "\nUtility programs"
+	@echo "========================"
+

@@ -7,10 +7,9 @@
 
 # The directory of this makefile
 MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
-include $(MAKEDIR)Makefile.ngsvars
-endif
 
+# Makefile includes
+include $(MAKEDIR)Makefile.ngsvars
 include $(MAKEDIR)/Makefile.general
 include $(MAKEDIR)/Makefile.sequenceprocessing
 include $(MAKEDIR)/Makefile.samtools
@@ -24,7 +23,7 @@ HALO_TARGET_PREFIX=halo
 endif
 
 # Input label
-MERGE_INPUT_SUFFIX=.sort.rg.bam
+MERGE_INPUT_SUFFIX=.trimmed.sync.sort.rg.bam
 
 # Targets
 TRIMSYNC_TARGETS=$(subst .fastq.gz,.trimmed.sync.fastq.gz,$(FASTQFILES))
@@ -37,33 +36,73 @@ flowcells: $(FLOWCELL_TARGETS)
 samples: $(SAMPLE_TARGETS)
 
 $(HALO_TARGET_PREFIX).bam: $(SAMPLE_TARGETS)
+	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
+	@if [ $(NTARGETS) != 0 ]; then \
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+	fi
 
 halo: all
 
 all: $(HALO_TARGET_PREFIX).filtered.eval_metrics
+
+# Batched SLURM submission:
+#
+# 1. partition target list into batch sized lists
+#
+# 2. submit each list independently, tracking the SLURM id
+#
+# 3. submit the merge target, with the tracked SLURM ids as
+#    dependencies
+#
+# Comments:
+# - not sure how MFLAGS vs MAKEFLAGS work
+# - how would this be done with qmake? 
+#
+ifndef HALO_BATCH_SIZE
+HALO_BATCH_SIZE=8
+endif
+halo-sbatch:
+	@echo Running halo-sbatch recipe: submit data to queue manager
+	@echo All sample targets: $(SAMPLE_TARGETS)
+	@echo All samples: $(SAMPLES)
+	@$(eval NTARGETS=$(shell echo $(SAMPLES) | awk '{print NF}'))
+	@i=0; sbatchcounter=0; SAMPLELIST=; JOBNAMES=""; for SMP in $(SAMPLES); do \
+	let i=i+1; \
+	SAMPLELIST="$$SAMPLELIST$$SMP "; \
+	if [ $$(($$i % $(HALO_BATCH_SIZE))) == 0 ] || [ $$i == $(NTARGETS) ]; then  \
+	let sbatchcounter=sbatchcounter+1; \
+	$(MAKE) flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err ;\
+	JOBNAMES="$$JOBNAMES,flowcells-$$sbatchcounter"; \
+	SAMPLELIST=; \
+	fi \
+	done ; 
+# Add sbatch submission of entire pipeline with waitfor requirements
+# based on the submitted jobs above. I have not figured out how to get
+# the JOBIDS easily from slurm output though.
+
+# JOBIDS=$(shell `jobinfo -n $$JOBNAMES -u $(SLURM_USER) | $(GREP) $(SLURM_ACCOUNT) | $(AWK) '{print $$1}' `); \
 
 ##############################
 # bwa alignment
 ##############################
 # Redefine bam recipe to get correct file suffixes
 # Only define bam rule - use pipe to avoid unnecessary sam file creation
-%.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
+%.trimmed.sync.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
 	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
 
 # Add read group information
-# This rule is so specific it is kept here
 %.sort.rg.bam: %.sort.bam
 	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
 	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
-	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@.bam=).bai
+	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
 
 
 ##############################
 # Merge rule 
 ##############################
-# The following rule has as requirement *all* flowcells, but the input
-# files to a given merge operation are the sample-specific bam files
+# The following rule has as requirement *all* flowcell targets, but
+# the input files to a given merge operation are the sample-specific
+# bam files
 %.sort.merge.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
@@ -82,33 +121,40 @@ GATK_UNIFIEDGENOTYPER_RAW_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
 
-%.sort.merge.raw.vcf: %.sort.merge.bam
+%.raw.vcf: %.bam
 	$(GATK_COMMAND) -T UnifiedGenotyper $(GATK_UNIFIEDGENOTYPER_RAW_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@  && mv $@.tmp.idx $@.idx
 
-# 2. Realignment target creator
+# 2. Realignment target creator - add dependency on raw.vcf for next step, otherwise default rule is run
+%.intervals: %.bam %.raw.vcf
+	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_REALIGN_TARGET_CREATOR_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@
 
 # 3. Indel realignment around known positions
 %.merge.realign.bam: %.merge.bam %.merge.intervals %.merge.raw.vcf
 	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTIONS) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
 
 # 4. Recalibration
+# Default recipe
 
 # 5. Clipping
+# Default recipe, set options
 GATK_CLIPREADS_OPTIONS=--cyclesToTrim 1-5 --clipRepresentation WRITE_NS -R $(GATK_REF)
 
 # 6. Generic genotyping
+# Default recipe, modified options
 GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF) --dbsnp $(GATK_DBSNP) -L $(GATK_TARGET_REGIONS)
 
 # 7. Variant filtration - set specific options for Haloplex
+# Default recipe, halo-specific options
 GATK_VARIANTFILTRATION_OPTIONS=--clusterWindowSize 10 --clusterSize 3 --filterExpression "MQ0 >= 4 && ((MQ0 / (1.0 * DP)) > 0.1)" --filterName "HARD_TO_VALIDATE" --filterExpression "DP < 10" --filterName "LowCoverage" --filterExpression "QUAL < 30.0" --filterName "VeryLowQual" --filterExpression "QUAL > 30.0 && QUAL < 50.0" --filterName "LowQual" --filterExpression "QD < 1.5" --filterName "LowQD"
 
 # 8. Variant evaluation
+# Default recipe, halo-specific options
 GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
 
 ##################################################
 # Precious 
 ##################################################
-.PRECIOUS: %.bai  %.trimmed.sync.fastq.gz %.vcf %.sort.merge.raw.vcf %.filtered.vcf
+.PRECIOUS: %.bai %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz %.vcf %.sort.merge.raw.vcf %.filtered.vcf
 
 # Clean
 CLEANTARGETS:=$(wildcard $(SAMPLE_PREFIX)*/*/*trimmed*) $(wildcard $(SAMPLE_PREFIX)*/*/*bam*) $(wildcard $(SAMPLE_PREFIX)*/*/*metrics) $(wildcard $(SAMPLE_PREFIX)*/*merge*) all.*
@@ -127,5 +173,5 @@ halo-header:
 	@echo -e "\nMakefile.halo options"
 	@echo "====================="
 
-halo-settings: halo-header print-HALO_TARGET_PREFIX print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
+halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS print-TRIMSYNC_TARGETS print-FLOWCELL_TARGETS print-SAMPLE_TARGETS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
 

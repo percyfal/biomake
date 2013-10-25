@@ -1,10 +1,27 @@
 #-*- makefile -*-
 
+# Makefile variable: make sure to use make version >=3.82
+# MAKE=/path/to/make
+
+# SLURM settings - for submission with sbatch 
+# NB: account must be set, all other variables have defaults which may
+# or may not do what you want
+# SLURM_ACCOUNT=
+# SLURM_WORKDIR=
+# SLURM_TIME=01:00:00
+# SLURM_PARTITION=devel
+# SLURM_MAILUSER=
+# SLURM_MAKE_J=4
+# SLURM_MODULES=bwa/0.7.5 GATK/2.3.6
+# SLURM_PREHOOK=
+
 # Change if naming scheme is different from SciLife production names
 # SAMPLE_PREFIX=P00
 #
 
-# Uncomment these if specific samples/flowcells should be run 
+# Uncomment these if specific samples/flowcells should be run.
+# Alternatively, one may have to list all the samples if they begin
+# with different prefixes
 # SAMPLES:=sample1 sample2 etc
 # NB: flowcells not yet implemented
 # FLOWCELLS:=flowcell1 flowcell2 etc

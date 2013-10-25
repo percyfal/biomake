@@ -43,15 +43,15 @@ endif
 %$(READ1_LABEL).trimmed.sync.fastq.gz: %$(READ1_LABEL).trimmed.fastq.gz %$(READ2_LABEL).trimmed.fastq.gz
 	@$(eval READ2=$(lastword $^))
 	@if [ -e $(READ2) ]; then \
-	echo "$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp $@"; \
-	$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp $@; \
+	echo "$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp.gz -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp.gz $@"; \
+	$(RESYNCMATES) $(RESYNCMATES_OPTIONS) -i $< -j $(READ2) -o $@.tmp.gz -p $(subst $(READ1_LABEL),$(READ2_LABEL),$@) && mv $@.tmp.gz $@; \
 	else \
 	echo "No such file " $(READ2); \
 	fi; 
 
-# Needed since %$(READ1_LABEL).trimmed.sync.fastq.gz is a prerequisite for picard
+# Needed since %$(READ2_LABEL).trimmed.sync.fastq.gz is a prerequisite for alignment
 %$(READ2_LABEL).trimmed.sync.fastq.gz: %$(READ1_LABEL).trimmed.sync.fastq.gz
-	echo "Done"
+	@echo $@ should be done in rule 1
 
 ##############################
 # settings

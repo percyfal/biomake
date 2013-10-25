@@ -21,7 +21,13 @@ interest.
 ## Installation ##
 
 Clone the repository https://github.com/percyfal/biomake to an
-appropriate location.
+appropriate location:
+
+	git clone https://github.com/percyfal/biomake /path/to/biomake
+
+## Requirements ##
+
+- make version >= 3.82
 
 # Usage #
 
