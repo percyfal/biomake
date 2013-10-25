@@ -153,7 +153,7 @@ GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --eval
 ##################################################
 # Precious 
 ##################################################
-.PRECIOUS: %.bai %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz %.vcf %.sort.merge.raw.vcf %.filtered.vcf
+.PRECIOUS: %.bai %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz %.vcf %.raw.vcf %.filtered.vcf
 
 # Clean
 CLEANTARGETS:=$(wildcard $(SAMPLE_PREFIX)*/*/*trimmed*) $(wildcard $(SAMPLE_PREFIX)*/*/*bam*) $(wildcard $(SAMPLE_PREFIX)*/*/*metrics) $(wildcard $(SAMPLE_PREFIX)*/*merge*) all.*

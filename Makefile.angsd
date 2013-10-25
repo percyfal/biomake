@@ -175,13 +175,13 @@ endif
 
 # bgid
 %.thetas.gz.bin: %.thetas.gz
-	$(BGID) make_bed $<
+	$(ANGSD_BGID) make_bed $<
 
 ifndef ANGSD_BGID_DOSTAT_OPTIONS
 ANGSD_BGID_DOSTAT_OPTIONS=-step $(ANGSD_OPTION_STEP) -win $(ANGSD_OPTION_WINDOW) -nChr $(ANGSD_OPTION_NCHR)
 endif
 %.thetas.gz.bgid_pestPG: %.thetas.gz %.thetas.gz.bin
-	$(BGID) do_stat $< $(ANGSD_BGID_DOSTAT_OPTIONS)
+	$(ANGSD_BGID) do_stat $< $(ANGSD_BGID_DOSTAT_OPTIONS) && mv $*.thetas.gz.pestPG $@
 
 # Bed file is zero based; hence subtract one from first coordinate
 %.bed: %.mafs.gz
