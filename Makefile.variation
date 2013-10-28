@@ -61,17 +61,27 @@ endif
 ifndef ANNOVAR_BUILDVER
 ANNOVAR_BUILDVER=hg19
 endif
+ifndef ANNOVAR_DBLIST
+ANNOVAR_DBLIST=dgv genomicSuperDups gwascatalog tfbs wgEncodeRegTfbsClustered wgEncodeRegDnaseClustered phastConsElements46way
+endif
+ifndef ANNOVAR_DBLIST_WEBFROM_ANNOVAR
+ANNOVAR_DBLIST_WEBFROM_ANNOVAR=1000g2012apr cosmic64 esp6500si_all esp6500si_ea ljb_all snp137 refGene avsift
+endif
 
-# Every database needs specific non-generic rule. Too cumbersome.
-# ifndef ANNOVAR_DATABASES
-# ANNOVAR_DATABASES=snp137 1000g2012apr
-# endif
-# ifndef ANNOVAR_LOCAL_DATABASES
-# ANNOVAR_LOCAL_DATABASES=esp6500si_all
-# endif
+annovar-download-webfrom-annovar-%:
+	$(ANNOVAR_HOME)/annotate_variation.pl -buildver $(ANNOVAR_BUILDVER) -downdb -webfrom annovar $* $(ANNOVAR_DB)
 
-# init_humandb:
-# 	$(ANNOVAR_HOME)/annotate_variation.pl -buildver $(ANNOVAR_BUILDVER) -downdb snp137
+annovar-download-%:
+	$(ANNOVAR_HOME)/annotate_variation.pl -buildver $(ANNOVAR_BUILDVER) -downdb $* $(ANNOVAR_DB)
+
+# DB targets
+ANNOVAR_DBLIST_TARGETS:=$(addprefix annovar-download-,$(ANNOVAR_DBLIST))
+ANNOVAR_DBLIST_WEBFROM_ANNOVAR_TARGETS:=$(addprefix annovar-download-webfrom-annovar-,$(ANNOVAR_DBLIST_WEBFROM_ANNOVAR))
+
+# Rule for setting up db
+# NB: this rule is problematic in that it is always run. We need a
+# list of all output database file names as targets.
+annovar-setupdb: $(ANNOVAR_DBLIST_TARGETS) $(ANNOVAR_DBLIST_WEBFROM_ANNOVAR_TARGETS)
 
 ifndef ANNOVAR_TABLE_OPTIONS
 ANNOVAR_TABLE_OPTIONS=--otherinfo
@@ -84,3 +94,24 @@ ANNOVAR_CONVERT_OPTIONS=--includeinfo
 endif
 %.avinput: %.vcf
 	$(ANNOVAR_HOME)/convert2annovar.pl  $(ANNOVAR_OPTIONS) $(ANNOVAR_CONVERT_OPTIONS) -format vcf4old $< > $@.tmp && mv $@.tmp $@
+
+
+##############################
+# Settings
+##############################
+print-%:
+	@echo '$*=$($*)'
+
+variation-header:
+	@echo -e "\nMakefile.variation options"
+	@echo "============================"
+
+vcftools-header:
+	@echo -e "\nvcftools options"
+	@echo "--------------------"
+
+annovar-header:
+	@echo -e "\nannovar options"
+	@echo "--------------------"
+
+variation-settings: variation-header vcftools-header print-VCFTOOLS_HOME print-VCFTOOLS_OPTIONS print-VCFTOOLS_STATS_OPTIONS print-HTSLIB_HOME print-VCF_HOME annovar-header print-ANNOVAR_HOME print-ANNOVAR_OPTIONS print-ANNOVAR_DB print-ANNOVAR_BUILDVER print-ANNOVAR_DBLIST print-ANNOVAR_DBLIST_WEBFROM_ANNOVAR print-ANNOVAR_DBLIST_TARGETS print-ANNOVAR_DBLIST_WEBFROM_ANNOVAR_TARGETS print-ANNOVAR_TABLE_OPTIONS print-ANNOVAR_CONVERT_OPTIONS

@@ -26,19 +26,17 @@ endif
 MERGE_INPUT_SUFFIX=.trimmed.sync.sort.rg.bam
 
 # Targets
-TRIMSYNC_TARGETS=$(subst .fastq.gz,.trimmed.sync.fastq.gz,$(FASTQFILES))
 FLOWCELL_TARGETS=$(subst $(READ1_LABEL).fastq.gz,$(MERGE_INPUT_SUFFIX),$(FASTQFILES))
 SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.realign.recal.clip.bam)
 
 # Target rules
-trimsync: $(TRIMSYNC_TARGETS)
 flowcells: $(FLOWCELL_TARGETS)
 samples: $(SAMPLE_TARGETS)
 
 $(HALO_TARGET_PREFIX).bam: $(SAMPLE_TARGETS)
 	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
 	@if [ $(NTARGETS) != 0 ]; then \
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai; \
 	fi
 
 halo: all
