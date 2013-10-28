@@ -154,7 +154,7 @@ ifneq ($(SLURM_MAILUSER),)
 endif
 	echo -e "\n\n#" `date` >> $@.sh 
 ifneq ($(SLURM_MODULES),)
-	echo -e $(addsuffix "\n", $(addprefix "module load ",$(SLURM_MODULES))) >> $@.sh
+	echo -e $(addprefix "module load ",$(addsuffix "\\n",$(SLURM_MODULES))) >> $@.sh
 endif
 	echo -e "\n\n"$(SLURM_PREHOOK) >> $@.sh
 ifneq ($(SLURM_COMMAND),)
