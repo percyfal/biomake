@@ -146,7 +146,7 @@ ifndef GATK_VCFSUFFIX
 GATK_VCFSUFFIX=.vcf
 endif
 %.phased.vcf: %.bam %.bai
-	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_READBACKEDPHASING_OPTIONS) -I $< --variant $*$(GATK_VCFSUFFIX) -R $(GATK_REF) > $@.tmp && mv $@.tmp $@
+	$(GATK_COMMAND) -T ReadBackedPhasing $(GATK_READBACKEDPHASING_OPTIONS) -I $< --variant $*$(GATK_VCFSUFFIX) -R $(GATK_REF) -o $@.tmp && mv $@.tmp $@
 
 ##############################
 # Select snp variants
