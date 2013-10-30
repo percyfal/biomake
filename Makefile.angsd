@@ -158,7 +158,13 @@ endif
 # doMafs
 ifndef ANGSD_DOMAFS_OPTIONS
 ANGSD_DOMAFS_OPTIONS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJORMINOR) -doMaf $(ANGSD_OPTION_MAF) -GL $(ANGSD_OPTION_GL) -nThreads $(ANGSD_OPTION_THREADS)
+ifdef ANGSD_OPTION_CHR
+ANGSD_DOMAFS_OPTIONS+=-r $(ANGSD_OPTION_CHR)
 endif
+endif
+%_$(ANGSD_OPTION_CHR).mafs.gz: %.list
+	$(ANGSD) $(ANGSD_DOMAFS_OPTIONS) -bam $< -out $(@:.mafs.gz=).tmp && rename $(@:.mafs.gz=).tmp $(@:.mafs.gz=) $(@:.mafs.gz=).tmp*
+
 %.mafs.gz: %.list
 	$(ANGSD) $(ANGSD_DOMAFS_OPTIONS) -bam $< -out $(@:.mafs.gz=).tmp && rename $(@:.mafs.gz=).tmp $(@:.mafs.gz=) $(@:.mafs.gz=).tmp*
 
