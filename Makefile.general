@@ -105,11 +105,11 @@ endif
 ifndef SLURM_COMMAND
 SLURM_COMMAND=
 endif
-# SLURM make_j option: number of parallel processes - not necessarily
-# same as number of cores
-ifndef SLURM_MAKE_J
-SLURM_MAKE_J=1
+# Options to pass to make in sbatch file, e.g. -j 4 -k
+ifndef SLURM_MAKE_OPTIONS
+SLURM_MAKE_OPTIONS=
 endif
+
 # SLURM_MODULES: list of modules to load
 ifndef SLURM_MODULES
 SLURM_MODULES=
@@ -160,7 +160,7 @@ endif
 ifneq ($(SLURM_COMMAND),)
 	echo -e $(SLURM_COMMAND) >> $@.sh
 else
-	echo -e $(MAKE) -j $(SLURM_MAKE_J) $*.log >> $@.sh
+	echo -e $(MAKE) $(SLURM_MAKE_OPTIONS) $*.log >> $@.sh
 endif
 	$(SBATCH) $(SBATCH_OPTIONS) $@.sh
 endif
