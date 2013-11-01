@@ -86,11 +86,15 @@ endif
 ifndef SLURM_MAILTYPE
 SLURM_MAILTYPE=All
 endif
-# Mailuser variable
+# Partition
 ifndef SLURM_PARTITION
 SLURM_PARTITION=devel
 endif
-# Partition
+# Constraint
+ifndef SLURM_CONSTRAINT
+SLURM_CONSTRAINT=
+endif
+# Mailuser variable
 ifndef SLURM_MAILUSER
 SLURM_MAILUSER=
 endif
@@ -114,6 +118,7 @@ endif
 ifndef SLURM_MODULES
 SLURM_MODULES=
 endif
+
 
 # extra output suffix = .sh so this rule is always run
 %.sbatch:
@@ -152,6 +157,10 @@ endif
 ifneq ($(SLURM_MAILUSER),)
 	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@.sh
 endif
+ifneq ($(SLURM_CONSTRAINT),)
+	echo -e "#SBATCH -C" $(SLURM_CONSTRAINT) >> $@.sh
+endif
+
 	echo -e "\n\n#" `date` >> $@.sh 
 ifneq ($(SLURM_MODULES),)
 	echo -e $(addprefix "module load ",$(addsuffix "\\n",$(SLURM_MODULES))) >> $@.sh
