@@ -110,10 +110,10 @@ halo-sbatch:
 ##############################
 ifndef GATK_UNIFIEDGENOTYPER_RAW_OPTIONS
 GATK_UNIFIEDGENOTYPER_RAW_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
-ifneq ($(GATK_DBSNP),"")
+ifneq ($(GATK_DBSNP),)
 GATK_UNIFIEDGENOTYPER_RAW_OPTIONS+=--dbsnp $(GATK_DBSNP)
 endif
-ifneq ($(GATK_TARGET_REGIONS),"")
+ifneq ($(GATK_TARGET_REGIONS),)
 GATK_UNIFIEDGENOTYPER_RAW_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
