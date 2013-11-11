@@ -27,7 +27,7 @@ CUTADAPT_OPTIONS=
 endif
 
 %.trimmed.fastq.gz: %.fastq.gz
-	$(if $(findstring $(READ1_LABEL),$<),\
+	$(if $(findstring $(READ1_LABEL).fastq.gz,$<),\
 	$(CUTADAPT) $(CUTADAPT_OPTIONS) -a $(CUTADAPT_THREEPRIME) $< -o $(@:.gz=).tmp.gz > $*.cutadapt_metrics && mv $(@:.gz=).tmp.gz $@,\
 	$(CUTADAPT) $(CUTADAPT_OPTIONS) -a $(CUTADAPT_FIVEPRIME) $< -o $(@:.gz=).tmp.gz > $*.cutadapt_metrics && mv $(@:.gz=).tmp.gz $@)
 
