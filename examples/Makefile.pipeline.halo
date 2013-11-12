@@ -12,7 +12,7 @@
 # SLURM_PARTITION=devel
 # SLURM_MAILUSER=
 # SLURM_MAKE_J=4
-# SLURM_MODULES=bwa/0.7.5 GATK/2.3.6
+# SLURM_MODULES=bioinfo-tools samtools/0.1.19 picard/1.92 cutadapt/1.2.1 bwa/0.7.5 GATK/2.3.6
 # SLURM_PREHOOK=
 
 # Change if naming scheme is different from SciLife production names

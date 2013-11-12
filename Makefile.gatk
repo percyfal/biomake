@@ -47,10 +47,10 @@ endif
 
 ifndef GATK_UNIFIEDGENOTYPER_OPTIONS
 GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
-ifneq ($(GATK_DBSNP), "")
+ifneq ($(GATK_DBSNP),)
 GATK_UNIFIEDGENOTYPER_OPTIONS+=--dbsnp $(GATK_DBSNP)
 endif
-ifneq ($(GATK_TARGET_REGIONS), "")
+ifneq ($(GATK_TARGET_REGIONS),)
 GATK_UNIFIEDGENOTYPER_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
@@ -65,7 +65,7 @@ endif
 ##############################
 ifndef GATK_REALIGN_TARGET_CREATOR_OPTIONS
 GATK_REALIGN_TARGET_CREATOR_OPTIONS=-R $(GATK_REF)
-ifneq ($(GATK_TARGET_REGIONS),"")
+ifneq ($(GATK_TARGET_REGIONS),)
 GATK_REALIGN_TARGET_CREATOR_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
@@ -88,7 +88,7 @@ endif
 ##############################
 ifndef GATK_BASERECALIBRATOR_OPTIONS
 GATK_BASERECALIBRATOR_OPTIONS=-R $(GATK_REF)
-ifneq ($(GATK_TARGET_REGIONS),"")
+ifneq ($(GATK_TARGET_REGIONS),)
 GATK_BASERECALIBRATOR_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
@@ -125,10 +125,10 @@ endif
 ##############################
 ifndef GATK_VARIANT_EVAL_OPTIONS
 GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
-ifneq ($(GATK_DBSNP),"")
+ifneq ($(GATK_DBSNP),)
 GATK_VARIANT_EVAL_OPTIONS+=--dbsnp $(GATK_DBSNP)
 endif
-ifneq ($(GATK_TARGET_REGIONS),"")
+ifneq ($(GATK_TARGET_REGIONS),)
 GATK_VARIANT_EVAL_OPTIONS+=-L $(GATK_TARGET_REGIONS)
 endif
 endif
