@@ -27,7 +27,9 @@ appropriate location:
 
 ## Requirements ##
 
-- make version >= 3.82
+- make version >= 3.82. Older versions fail to correctly generate the
+  dependencies for merge targets (e.g. halo merge rule, see
+  **Makefile.halo**).
 
 # Usage #
 
@@ -102,9 +104,11 @@ https://github.com/percyfal/ngs.test.data):
 ## Haloplex ##
 
 Copy the file **example/Makefile.pipeline.halo** to the root directory
-where project data resides. Uncomment relevant sections and set the
-variables. See the included Makefile (**Makefile.halo**) for further
-options. 
+where project data resides and rename it (or link it) to **Makefile**.
+The latter is necessary for the auto-generated batch submission
+scripts to work since they invoke make without the '-f' option.
+Uncomment relevant sections and set the variables. See the included
+Makefile (**Makefile.halo**) for further options.
 
 The pipeline currently does the following:
 
@@ -136,7 +140,7 @@ Run with '-n' flag to monitor commands:
 
 	make -n halo
 	
-Make halo target with one of the following commands:
+Make *halo* target with one of the following commands:
 
 	make halo
 	make halo.filtered.eval_metrics
@@ -151,7 +155,7 @@ Make halo target with one of the following commands:
 	
 #### 4. Clean up ####
 
-The clean target removes everything.
+The *clean* target removes everything.
 
 	make clean
 	
@@ -159,6 +163,18 @@ The clean target removes everything.
 
 	make halo SAMPLES=P001_101_index3
 
-#### 6. Running a specific flowcell ####
+#### 6. Batch submission ####
+
+The *halo-sbatch* target is a special target that groups samples into
+batches and creates sbatch files that make the *samples* target for
+each sample group. The size of the batch can be modified via the
+*HALO_BATCH_SIZE* variable. For instance, running
+
+	make halo-sbatch
+
+will partition the samples into batches of eight samples and run *make
+samples* on each batch.
+
+#### Running a specific flowcell ####
 
 TODO.

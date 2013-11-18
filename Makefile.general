@@ -110,6 +110,10 @@ endif
 ifndef SLURM_MAKE_J
 SLURM_MAKE_J=1
 endif
+# Make options
+ifndef SLURM_MAKE_OPTIONS
+SLURM_MAKE_OPTIONS=
+endif
 # SLURM_MODULES: list of modules to load
 ifndef SLURM_MODULES
 SLURM_MODULES=
@@ -153,14 +157,14 @@ ifneq ($(SLURM_MAILUSER),)
 	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@.sh
 endif
 	echo -e "\n\n#" `date` >> $@.sh 
+	echo -e "\n\n $(SLURM_PREHOOK) \n\n" >> $@.sh
 ifneq ($(SLURM_MODULES),)
 	echo -e $(addprefix "module load ",$(addsuffix "\\n",$(SLURM_MODULES))) >> $@.sh
 endif
-	echo -e "\n\n"$(SLURM_PREHOOK) >> $@.sh
 ifneq ($(SLURM_COMMAND),)
 	echo -e $(SLURM_COMMAND) >> $@.sh
 else
-	echo -e $(MAKE) -j $(SLURM_MAKE_J) $*.log >> $@.sh
+	echo -e $(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) $*.log >> $@.sh
 endif
 	$(SBATCH) $(SBATCH_OPTIONS) $@.sh
 endif
