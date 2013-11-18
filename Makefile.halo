@@ -28,12 +28,15 @@ MERGE_INPUT_SUFFIX=.trimmed.sync.sort.rg.bam
 # Targets
 FLOWCELL_TARGETS=$(subst $(READ1_LABEL).fastq.gz,$(MERGE_INPUT_SUFFIX),$(FASTQFILES))
 SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.realign.recal.clip.bam)
+# Raw vcf targets - these have to exist *before* realignment is run,
+# otherwise the default realignment rule is used
+VCF_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.raw.vcf)
 
 # Target rules
 flowcells: $(FLOWCELL_TARGETS)
-samples: $(SAMPLE_TARGETS)
+samples: $(VCF_TARGETS) $(SAMPLE_TARGETS)
 
-$(HALO_TARGET_PREFIX).bam: $(SAMPLE_TARGETS)
+$(HALO_TARGET_PREFIX).bam: $(VCF_TARGETS) $(SAMPLE_TARGETS)
 	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
 	@if [ $(NTARGETS) != 0 ]; then \
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai; \
@@ -126,7 +129,7 @@ endif
 	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_REALIGN_TARGET_CREATOR_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@
 
 # 3. Indel realignment around known positions
-%.merge.realign.bam: %.merge.bam %.merge.intervals %.merge.raw.vcf
+%.realign.bam: %.bam %.intervals %.raw.vcf
 	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTIONS) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
 
 # 4. Recalibration
