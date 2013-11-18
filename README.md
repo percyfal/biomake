@@ -41,7 +41,7 @@ are used to include Makefiles of interest:
 	# Makefile example
 
 	# Include bwa-specific Makefile
-	include /path/to/Makefile.bwa
+	include /path/to/biomake/Makefile.bwa
 
 	# Each Makefile has configurable variables
 	BWA_THREADS=4
@@ -66,7 +66,7 @@ MAKEFILEEXTENSION-settings (e.g. bwa-settings), defined at the end of
 the file. Running this command should print the current settings and
 show available options:
 
-	make -f /path/to/Makefile.bwa  bwa-settings
+	make -f /path/to/biomake/Makefile.bwa  bwa-settings
 
     Makefile.bwa options
 	====================
