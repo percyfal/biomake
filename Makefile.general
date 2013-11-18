@@ -86,11 +86,15 @@ endif
 ifndef SLURM_MAILTYPE
 SLURM_MAILTYPE=All
 endif
-# Mailuser variable
+# Partition
 ifndef SLURM_PARTITION
 SLURM_PARTITION=devel
 endif
-# Partition
+# Constraint
+ifndef SLURM_CONSTRAINT
+SLURM_CONSTRAINT=
+endif
+# Mailuser variable
 ifndef SLURM_MAILUSER
 SLURM_MAILUSER=
 endif
@@ -105,12 +109,7 @@ endif
 ifndef SLURM_COMMAND
 SLURM_COMMAND=
 endif
-# SLURM make_j option: number of parallel processes - not necessarily
-# same as number of cores
-ifndef SLURM_MAKE_J
-SLURM_MAKE_J=1
-endif
-# Make options
+# Options to pass to make in sbatch file, e.g. -j 4 -k
 ifndef SLURM_MAKE_OPTIONS
 SLURM_MAKE_OPTIONS=
 endif
@@ -118,6 +117,7 @@ endif
 ifndef SLURM_MODULES
 SLURM_MODULES=
 endif
+
 
 # extra output suffix = .sh so this rule is always run
 %.sbatch:
@@ -156,6 +156,10 @@ endif
 ifneq ($(SLURM_MAILUSER),)
 	echo -e "#SBATCH --mail-user="$(SLURM_MAILUSER) >> $@.sh
 endif
+ifneq ($(SLURM_CONSTRAINT),)
+	echo -e "#SBATCH -C" $(SLURM_CONSTRAINT) >> $@.sh
+endif
+
 	echo -e "\n\n#" `date` >> $@.sh 
 	echo -e "\n\n $(SLURM_PREHOOK) \n\n" >> $@.sh
 ifneq ($(SLURM_MODULES),)
@@ -164,7 +168,7 @@ endif
 ifneq ($(SLURM_COMMAND),)
 	echo -e $(SLURM_COMMAND) >> $@.sh
 else
-	echo -e $(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) $*.log >> $@.sh
+	echo -e $(MAKE) $(SLURM_MAKE_OPTIONS) $*.log >> $@.sh
 endif
 	$(SBATCH) $(SBATCH_OPTIONS) $@.sh
 endif
