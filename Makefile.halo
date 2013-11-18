@@ -65,10 +65,10 @@ halo-sbatch:
 	SAMPLELIST="$$SAMPLELIST$$SMP "; \
 	if [ $$(($$i % $(HALO_BATCH_SIZE))) == 0 ] || [ $$i == $(NTARGETS) ]; then  \
 	let sbatchcounter=sbatchcounter+1; \
-	$(MAKE) flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err ;\
-	$(MAKE) halo-settings SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err > flowcells-$$sbatchcounter.settings; \
-	$(MAKE) -pn flowcells-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=flowcells-$$sbatchcounter.out SLURM_ERR=flowcells-$$sbatchcounter.err >> flowcells-$$sbatchcounter.settings; \
-	JOBNAMES="$$JOBNAMES,flowcells-$$sbatchcounter"; \
+	$(MAKE) halo-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=halo-$$sbatchcounter.out SLURM_ERR=halo-$$sbatchcounter.err ;\
+	$(MAKE) halo-settings SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=halo-$$sbatchcounter.out SLURM_ERR=halo-$$sbatchcounter.err > halo-$$sbatchcounter.settings; \
+	$(MAKE) -pn halo-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=halo-$$sbatchcounter.out SLURM_ERR=halo-$$sbatchcounter.err >> halo-$$sbatchcounter.settings; \
+	JOBNAMES="$$JOBNAMES,halo-$$sbatchcounter"; \
 	SAMPLELIST=; \
 	fi \
 	done ; 
