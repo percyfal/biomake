@@ -129,7 +129,7 @@ endif
 	$(GATK_COMMAND) -T RealignerTargetCreator $(GATK_REALIGN_TARGET_CREATOR_OPTIONS) -I $< -o $@.tmp && mv $@.tmp $@
 
 # 3. Indel realignment around known positions
-%.realign.bam: %.bam %.intervals %.raw.vcf
+%.merge.realign.bam: %.merge.bam %.merge.intervals %.merge.raw.vcf
 	$(GATK_COMMAND) -T IndelRealigner $(GATK_INDELREALIGNER_OPTIONS) -I $< -known $(word 3, $^) -o $@.tmp --targetIntervals $(word 2, $^) && mv $@.tmp $@  && mv $@.tmp.bai $@.bai
 
 # 4. Recalibration
