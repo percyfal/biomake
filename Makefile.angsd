@@ -120,7 +120,8 @@ ANGSD_EMOPTIM2_OPTIONS+=-nSites $(ANGSD_OPTION_SITES)
 endif
 endif
 %.sfs.em2.ml: %.sfs
-	$(ANGSD_EMOPTIM2) $< $(ANGSD_OPTION_NCHR) $(ANGSD_EMOPTIM2_OPTIONS) > $@.tmp && mv $@.tmp $@
+	$(ANGSD_EMOPTIM2) $< $(ANGSD_OPTION_NCHR) $(ANGSD_EMOPTIM2_OPTIONS) > $@.exp
+	$(AWK) '{for (i=1; i<NF; i++) printf("%f ",exp($$i)); printf("%f", exp($$i))}' $@.exp > $@.tmp && mv $@.tmp $@
 
 # 2. emOptim
 ifndef ANGSD_EMOPTIM_OPTIONS
