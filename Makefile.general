@@ -90,6 +90,10 @@ endif
 ifndef SLURM_PARTITION
 SLURM_PARTITION=devel
 endif
+# Cluster name
+ifndef SLURM_CLUSTER
+SLURM_CLUSTER=
+endif
 # Constraint
 ifndef SLURM_CONSTRAINT
 SLURM_CONSTRAINT=
@@ -131,8 +135,8 @@ ifeq ($(SLURM_ACCOUNT),)
 else
 	echo -e "#!/bin/bash -l" > $@.sh 
 	echo -e "#SBATCH" -p $(SLURM_PARTITION) >> $@.sh 
-ifeq ($(SLURM_PARTITION),halvan)
-	echo -e "#SBATCH" -M $(SLURM_PARTITION) >> $@.sh
+ifneq ($(SLURM_CLUSTER),)
+	echo -e "#SBATCH" -M $(SLURM_CLUSTER) >> $@.sh
 endif
 	echo -e "#SBATCH" -A $(SLURM_ACCOUNT) >> $@.sh 
 	echo -e "#SBATCH" -n $(SLURM_N_CORES) >> $@.sh 
@@ -193,7 +197,7 @@ endif
 print-%:
 	@echo '$*=$($*)'
 
-general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS general-slurm-header print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_OUT print-SLURM_ERR print-SLURM_MODULES print-SLURM_MAKE_J print-SLURM_EXTRA_HEADER print-SLURM_PREHOOK
+general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS general-slurm-header print-SLURM_PARTITION print-SLURM_CLUSTER print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_OUT print-SLURM_ERR print-SLURM_MODULES print-SLURM_MAKE_J print-SLURM_MAKE_OPTIONS print-SLURM_EXTRA_HEADER print-SLURM_PREHOOK
 
 general-header:
 	@echo -e "\nMakefile.general options"
