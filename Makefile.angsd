@@ -134,7 +134,7 @@ ifdef ANGSD_OPTIMSFS_OPTIONS
 ANGSD_OPTIMSFS_OPTIONS=
 endif
 %.sfs.ml: %.sfs
-	$(ANGSD_OPTIMSFS) -binput $< -nChr $(ANGSD_OPTION_NCH) -outnames $@.tmp && mv $@.tmp $@
+	$(ANGSD_OPTIMSFS) -binput $< -nChr $(ANGSD_OPTION_NCHR) -outnames $@.tmp && mv $@.tmp $@
 
 # doThetas
 # Generate thetas files
@@ -148,12 +148,11 @@ endif
 %_$(ANGSD_OPTION_CHR).thetas.gz: %.sfs.em.ml %.list
 	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && rename $(@:.thetas.gz=).tmp $(@:.thetas.gz=) $(@:.thetas.gz=).tmp*
 
-%.thetas.gz: %.sfs.em.ml
-	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
-
 %.thetas.gz: %.sfs.em2.ml
 	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
 
+%.thetas.gz: %.sfs.em.ml
+	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
 
 # doMafs
 ifndef ANGSD_DOMAFS_OPTIONS
