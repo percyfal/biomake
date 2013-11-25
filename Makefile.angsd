@@ -112,13 +112,14 @@ endif
 # 1. emOptim2
 ifndef ANGSD_EMOPTIM2_OPTIONS
 ANGSD_EMOPTIM2_OPTIONS=-maxIter $(ANGSD_OPTION_MAXITER) -P $(ANGSD_OPTION_THREADS)
+endif
 ifdef ANGSD_OPTION_TOLE
 ANGSD_EMOPTIM2_OPTIONS+=-tole $(ANGSD_OPTION_TOLE)
 endif
 ifneq ($(ANGSD_OPTION_SITES),)
 ANGSD_EMOPTIM2_OPTIONS+=-nSites $(ANGSD_OPTION_SITES)
 endif
-endif
+
 %.sfs.em2.ml: %.sfs
 	$(ANGSD_EMOPTIM2) $< $(ANGSD_OPTION_NCHR) $(ANGSD_EMOPTIM2_OPTIONS) > $@.exp
 	$(AWK) '{for (i=1; i<NF; i++) printf("%f ",exp($$i)); printf("%f", exp($$i))}' $@.exp > $@.tmp && mv $@.tmp $@
@@ -141,27 +142,28 @@ endif
 # Generate thetas files
 ifndef ANGSD_DOTHETAS_OPTIONS
 ANGSD_DOTHETAS_OPTIONS=-realSFS 1 -GL $(ANGSD_OPTION_GL) -anc $(ANGSD_OPTION_ANC) -doThetas 1 -nThreads $(ANGSD_OPTION_THREADS)
+endif
 ifdef ANGSD_OPTION_CHR
 ANGSD_DOTHETAS_OPTIONS+=-r $(ANGSD_OPTION_CHR)
 endif
-endif
 
 %_$(ANGSD_OPTION_CHR).thetas.gz: %.sfs.em.ml %.list
-	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && rename $(@:.thetas.gz=).tmp $(@:.thetas.gz=) $(@:.thetas.gz=).tmp*
+	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $*.tmp && mv $(@:.thetas.gz=).tmp.thetas.gz $@ && mv $(@:.thetas.gz=).tmp.arg $*.arg
 
 %.thetas.gz: %.sfs.em2.ml
-	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
+	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $*.tmp && mv $*.tmp.thetas.gz $@ && mv $*.tmp.arg $*.arg
 
 %.thetas.gz: %.sfs.em.ml
-	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $(@:.thetas.gz=).tmp && mv $@.tmp.thetas.gz $@
+	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $*.tmp && mv $*.tmp.thetas.gz $@ && mv $*.tmp.arg $*.arg
 
 # doMafs
 ifndef ANGSD_DOMAFS_OPTIONS
 ANGSD_DOMAFS_OPTIONS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJORMINOR) -doMaf $(ANGSD_OPTION_MAF) -GL $(ANGSD_OPTION_GL) -nThreads $(ANGSD_OPTION_THREADS)
+endif
 ifdef ANGSD_OPTION_CHR
 ANGSD_DOMAFS_OPTIONS+=-r $(ANGSD_OPTION_CHR)
 endif
-endif
+
 %_$(ANGSD_OPTION_CHR).mafs.gz: %.list
 	$(ANGSD) $(ANGSD_DOMAFS_OPTIONS) -bam $< -out $(@:.mafs.gz=).tmp && rename $(@:.mafs.gz=).tmp $(@:.mafs.gz=) $(@:.mafs.gz=).tmp*
 
