@@ -113,11 +113,14 @@ endif
 ifndef ANGSD_EMOPTIM2_OPTIONS
 ANGSD_EMOPTIM2_OPTIONS=-maxIter $(ANGSD_OPTION_MAXITER) -P $(ANGSD_OPTION_THREADS)
 endif
+ifneq ($(ANGSD_OPTION_SITES),)
+ANGSD_EMOPTIM2_OPTIONS+=-nSites $(ANGSD_OPTION_SITES)
+endif
 ifdef ANGSD_OPTION_TOLE
 ANGSD_EMOPTIM2_OPTIONS+=-tole $(ANGSD_OPTION_TOLE)
 endif
-ifneq ($(ANGSD_OPTION_SITES),)
-ANGSD_EMOPTIM2_OPTIONS+=-nSites $(ANGSD_OPTION_SITES)
+ifdef ANGSD_EMOPTIM2_OPTION_FILTER
+ANGSD_EMOPTIM2_OPTIONS+=-filter $(ANGSD_EMOPTIM2_OPTION_FILTER)
 endif
 
 %.sfs.em2.ml: %.sfs
@@ -147,9 +150,6 @@ ifdef ANGSD_OPTION_CHR
 ANGSD_DOTHETAS_OPTIONS+=-r $(ANGSD_OPTION_CHR)
 endif
 
-%_$(ANGSD_OPTION_CHR).thetas.gz: %.sfs.em.ml %.list
-	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $*.tmp && mv $(@:.thetas.gz=).tmp.thetas.gz $@ && mv $(@:.thetas.gz=).tmp.arg $*.arg
-
 %.thetas.gz: %.sfs.em2.ml
 	$(ANGSD) $(ANGSD_DOTHETAS_OPTIONS) -pest $< -bam $*.list -out $*.tmp && mv $*.tmp.thetas.gz $@ && mv $*.tmp.arg $*.arg
 
@@ -162,6 +162,9 @@ ANGSD_DOMAFS_OPTIONS=-anc $(ANGSD_OPTION_ANC) -doMajorMinor $(ANGSD_OPTION_MAJOR
 endif
 ifdef ANGSD_OPTION_CHR
 ANGSD_DOMAFS_OPTIONS+=-r $(ANGSD_OPTION_CHR)
+endif
+ifdef ANGSD_DOMAFS_OPTION_FILTER
+ANGSD_DOMAFS_OPTIONS+=-filter $(ANGSD_DOMAFS_OPTION_FILTER)
 endif
 
 %_$(ANGSD_OPTION_CHR).mafs.gz: %.list
