@@ -92,7 +92,7 @@ endif
 ifndef ANNOVAR_CONVERT_OPTIONS
 ANNOVAR_CONVERT_OPTIONS=--includeinfo
 endif
-ifndef ANNOVAR_VCF_FORMAT
+ifndef ANNOVAR_CONVERT_VCF_FORMAT
 ANNOVAR_CONVERT_VCF_FORMAT=vcf4
 endif
 %.avinput: %.vcf
