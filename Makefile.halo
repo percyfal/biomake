@@ -159,7 +159,7 @@ endif
 # 8. Variant evaluation
 # Default recipe, halo-specific options
 ifndef GATK_VARIANT_EVAL_OPTIONS
-GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
+GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
 endif
 
 ##################################################
