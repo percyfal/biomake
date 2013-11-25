@@ -17,14 +17,6 @@
 # SLURM_MODULES=bwa/0.7.5 GATK/2.3.6
 # SLURM_PREHOOK=
 
-# Useful include files
-include ~/lib/make/Makefile.general
-include ~/lib/make/Makefile.angsd
-include ~/lib/make/Makefile.samtools
-include ~/lib/make/Makefile.picard
-include ~/lib/make/Makefile.bedtools
-
-
 ##############################
 # General options
 ##############################
@@ -142,3 +134,14 @@ include ~/lib/make/Makefile.bedtools
 # Setup pestPG targets
 # PESTTARGETS=$(subst gz,gz.bgid_pestPG,$(THETASTARGETS))
 # pestpg: $(PESTTARGETS)
+
+##############################
+# Useful include files
+##############################
+
+include ~/lib/make/Makefile.general
+include ~/lib/make/Makefile.angsd
+include ~/lib/make/Makefile.samtools
+include ~/lib/make/Makefile.picard
+include ~/lib/make/Makefile.bedtools
+
