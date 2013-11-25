@@ -65,9 +65,9 @@ endif
 ##############################
 ifndef GATK_REALIGN_TARGET_CREATOR_OPTIONS
 GATK_REALIGN_TARGET_CREATOR_OPTIONS=-R $(GATK_REF)
+endif
 ifneq ($(GATK_TARGET_REGIONS),)
 GATK_REALIGN_TARGET_CREATOR_OPTIONS+=-L $(GATK_TARGET_REGIONS)
-endif
 endif
 
 %.intervals: %.bam
@@ -88,9 +88,9 @@ endif
 ##############################
 ifndef GATK_BASERECALIBRATOR_OPTIONS
 GATK_BASERECALIBRATOR_OPTIONS=-R $(GATK_REF)
+endif
 ifneq ($(GATK_TARGET_REGIONS),)
 GATK_BASERECALIBRATOR_OPTIONS+=-L $(GATK_TARGET_REGIONS)
-endif
 endif
 %.recal_data.grp: %.bam %.bai
 	$(eval KNOWN_SITES=$(addprefix -knownSites ,$(GATK_KNOWN_SITES)))
@@ -125,12 +125,12 @@ endif
 ##############################
 ifndef GATK_VARIANT_EVAL_OPTIONS
 GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
+endif
 ifneq ($(GATK_DBSNP),)
 GATK_VARIANT_EVAL_OPTIONS+=--dbsnp $(GATK_DBSNP)
 endif
 ifneq ($(GATK_TARGET_REGIONS),)
 GATK_VARIANT_EVAL_OPTIONS+=-L $(GATK_TARGET_REGIONS)
-endif
 endif
 %.eval_metrics: %.vcf
 	$(GATK_COMMAND) -T VariantEval $(GATK_VARIANT_EVAL_OPTIONS) -R $(GATK_REF) --eval $< -o $@.tmp && mv $@.tmp $@
