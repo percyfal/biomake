@@ -5,18 +5,6 @@
 # Description: halo pipeline make rules
 #
 
-# The directory of this makefile
-MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
-
-# Makefile includes
-include $(MAKEDIR)Makefile.ngsvars
-include $(MAKEDIR)Makefile.general
-include $(MAKEDIR)Makefile.sequenceprocessing
-include $(MAKEDIR)Makefile.samtools
-include $(MAKEDIR)Makefile.bwa
-include $(MAKEDIR)Makefile.picard
-include $(MAKEDIR)Makefile.gatk
-
 # Output name
 ifndef HALO_TARGET_PREFIX
 HALO_TARGET_PREFIX=halo
@@ -112,7 +100,7 @@ halo-sbatch:
 # For identification of realignment target regions
 ##############################
 ifndef GATK_UNIFIEDGENOTYPER_RAW_OPTIONS
-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 30 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
+GATK_UNIFIEDGENOTYPER_RAW_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 200 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
 endif
 ifneq ($(GATK_DBSNP),)
 GATK_UNIFIEDGENOTYPER_RAW_OPTIONS+=--dbsnp $(GATK_DBSNP)
@@ -144,10 +132,10 @@ endif
 # 6. Generic genotyping
 # Default recipe, modified options
 ifndef GATK_UNIFIEDGENOTYPER_OPTIONS
-GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF) --dbsnp $(GATK_DBSNP)
+GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 200 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF) --dbsnp $(GATK_DBSNP)
+endif
 ifneq ($(GATK_TARGET_REGIONS),)
 GATK_UNIFIEDGENOTYPER_OPTIONS+=-L $(GATK_TARGET_REGIONS)
-endif
 endif
 
 # 7. Variant filtration - set specific options for Haloplex
@@ -199,4 +187,24 @@ print-FLOWCELL_TARGETS:
 
 
 halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-GATK_UNIFIEDGENOTYPER_RAW_OPTIONS halo-targets print-TRIMSYNC_TARGETS print-FLOWCELL_TARGETS print-SAMPLE_TARGETS general-settings ngsvars-settings sequenceprocessing-settings samtools-settings bwa-settings picard-settings gatk-settings 
+
+##############################
+# Include files
+#
+# These are and should be put last since we use ifndef statements to
+# check if options have been set. The included options should be the
+# last resort.
+#
+##############################
+# The directory of this makefile
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+
+# Makefile includes
+include $(MAKEDIR)Makefile.ngsvars
+include $(MAKEDIR)Makefile.general
+include $(MAKEDIR)Makefile.sequenceprocessing
+include $(MAKEDIR)Makefile.samtools
+include $(MAKEDIR)Makefile.bwa
+include $(MAKEDIR)Makefile.picard
+include $(MAKEDIR)Makefile.gatk
 
