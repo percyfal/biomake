@@ -139,9 +139,16 @@
 # Useful include files
 ##############################
 
-include ~/lib/make/Makefile.general
-include ~/lib/make/Makefile.angsd
-include ~/lib/make/Makefile.samtools
-include ~/lib/make/Makefile.picard
-include ~/lib/make/Makefile.bedtools
+# include /path/to/biomake/Makefile.general
+# include /path/to/biomake/Makefile.angsd
+# include /path/to/biomake/Makefile.samtools
+# include /path/to/biomake/Makefile.picard
+# include /path/to/biomake/Makefile.bedtools
+
+##############################
+# Overridden recipes
+# 
+# If one needs to override recipes, these should be added here,
+# *after* the include statements
+##############################
 

@@ -47,7 +47,19 @@
 
 # GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
 
+
+##############################
+# Include files
+##############################
+
 # Include the haloplex pipeline Makefile that resides in the biomake directory. Look in this file for further options. 
 # include /path/to/biomake/Makefile.halo
 
+
+##############################
+# Overridden recipes
+# 
+# If one needs to override recipes, these should be added here,
+# *after* the include statements
+##############################
 
