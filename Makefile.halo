@@ -74,26 +74,12 @@ halo-sbatch:
 # bwa alignment
 ##############################
 # Redefine bam recipe to get correct file suffixes
-# Only define bam rule - use pipe to avoid unnecessary sam file creation
-%.trimmed.sync.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
-	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
-
-# Add read group information
-%.sort.rg.bam: %.sort.bam
-	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
-	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
-	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
-
+# See section after include statements
 
 ##############################
 # Merge rule 
 ##############################
-# The following rule has as requirement *all* flowcell targets, but
-# the input files to a given merge operation are the sample-specific
-# bam files
-%.sort.merge.bam: $(FLOWCELL_TARGETS)
-	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
+# See section after include statements
 
 ##############################
 # 1. Raw genotypes
@@ -208,3 +194,24 @@ include $(MAKEDIR)Makefile.bwa
 include $(MAKEDIR)Makefile.picard
 include $(MAKEDIR)Makefile.gatk
 
+
+##############################
+# Overridden recipes
+##############################
+
+# Only define bam rule - use pipe to avoid unnecessary sam file creation
+%.trimmed.sync.bam: %$(READ1_LABEL).trimmed.sync.fastq.gz %$(READ2_LABEL).trimmed.sync.fastq.gz
+	$(BWA) mem $(BWA_OPTIONS) $(BWA_REF) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+# Add read group information
+%.sort.rg.bam: %.sort.bam
+	java -Xmx2g -jar $(PICARD_HOME)/AddOrReplaceReadGroups.jar INPUT=$< OUTPUT=$@.tmp SORT_ORDER=coordinate \
+	RGID=$(firstword $(subst ., ,$*)) RGLB=lib RGPL=ILLUMINA RGPU=$(firstword $(subst ., ,$*)) \
+	RGSM=$(firstword $(subst /, ,$(firstword $(subst ., ,$*)))) CREATE_INDEX=true && mv $@.tmp $@; mv $@.tmp.bai $(@:.bam=).bai
+
+# The following rule has as requirement *all* flowcell targets, but
+# the input files to a given merge operation are the sample-specific
+# bam files
+%.sort.merge.bam: $(FLOWCELL_TARGETS)
+	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
