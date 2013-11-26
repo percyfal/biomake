@@ -19,8 +19,9 @@ endif
 ifndef BWA_THREADS
 BWA_THREADS=$(THREADS)
 endif
+# -M: mark shorter split reads as secondary (compatibility with GATK and picard)
 ifndef BWA_OPTIONS
-BWA_OPTIONS=-t $(BWA_THREADS)
+BWA_OPTIONS=-t $(BWA_THREADS) -M
 endif
 ifndef BWA_REF
 BWA_REF=$(REF)
