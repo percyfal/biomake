@@ -151,8 +151,6 @@ endif
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(PICARD_MERGESAM_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_OPTIONS_COMMON) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
 
-
-
 ##############################
 # settings
 ##############################
