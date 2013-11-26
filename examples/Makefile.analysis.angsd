@@ -5,6 +5,9 @@
 # Makefile variable: make sure to use make version >=3.82
 # MAKE=/path/to/make
 
+# General
+# THREADS=
+
 # SLURM settings - for submission with sbatch 
 # NB: account must be set, all other variables have defaults which may
 # or may not do what you want
@@ -25,18 +28,33 @@
 # Version and search path
 # ANGSD_VERSION=0.549
 # ANGSD_PATH=/path/to/angsg/angsd$(ANGSD_VERSION)
-# NGSTOOLS_PATH=/path/to/ngstools
 
+# Angsd options
 # Number of sites; needed for sfs prior ml optimization with emOptim2
-# ANGSD_OPTION_SITES=
+# ANGSD_OPTION_NSITES=
+# Number of sampled chromosome = num individuals x 2 (assuming diploid)
+# ANGSD_OPTION_NCHR=
 
-# THREADS=8
-# ANGSD_OPTION_CHR=
+# Angsd utility variables.
 
 # Set populations to list of prefixes, e.g. A B C D. These should
 # correspond to the names used to create the list files (see below),
 # e.g. A.list
-# POPULATIONS=A B C D
+# ANGSD_POPULATIONS:=A B C D
+
+# Note that it may be necessary to explicitly enumerate and generate
+# the chromosome names if you intend to generate target names from
+# them here. Otherwise, ANGSD_CHROMOSOMES is calculated automatically
+# if not specified here, but not set until includes have been
+# performed
+# ANGSD_CHR_ENUM_FROM=0
+# ANGSD_CHR_ENUM_TO=100
+# ANGSD_CHR_ENUM=$(shell seq $(ANGSD_CHR_ENUM_FROM) $(ANGSD_CHR_ENUM_TO))
+# ANGSD_CHR_LABEL=scaffold
+# ANGSD_CHROMOSOMES=$(foreach i,${ANGSD_CHR_ENUM},$(ANGSD_CHR_LABEL)_$(i)) $(ANGSD_CHROMOSOMES_EXTRA)
+
+# ngstools
+# NGSTOOLS_PATH=/path/to/ngstools
 
 ##############################
 # Setting up the input
@@ -51,7 +69,7 @@
 # 	ls -1 /path/to/inputdata/$(firstword $(subst ., ,$@))[0-9][0-9].bam | sort > $@.tmp && mv $@.tmp $@
 
 # Phony target to generate lists
-# lists: $(addsuffix .list,$(POPULATIONS))
+# lists: $(addsuffix .list,$(ANGSD_POPULATIONS))
 
 ##################################################
 # Generating sfs priors
@@ -60,9 +78,9 @@
 
 # %_prior.list:
 # 	ls -1 /path/to/inputdata/$(firstword $(subst ., ,$@))[0-9][0-9].bam | sort > $@.tmp && mv $@.tmp $@
-# priorlists: $(addsuffix _prior.list,$(POPULATIONS))
+# priorlists: $(addsuffix _prior.list,$(ANGSD_POPULATIONS))
 
-# MLTARGETS:=$(addsuffix _prior.sfs.em2.ml.log, $(POPULATIONS))
+# MLTARGETS:=$(addsuffix _prior.sfs.em2.ml.log, $(ANGSD_POPULATIONS))
 # sfspriors: priorlists $(MLTARGETS)
 
 ##############################
@@ -80,13 +98,9 @@
 # sites.list: reference.mappability
 # 	filterLowMappability.pl $< > $@.tmp && mv $@.tmp $@
 
-# Finally calculate prior using the filter list, using the same
+# Here, calculate prior using the filter list, using the same
 # command as above ('make sfspriors'), but with modified options
-# FILTER=sites.list
-# ifeq ($(wildcard $(FILTER)),)
-# ANGSD_EMOPTIM2_OPTIONS+=-filter $(FILTER)
-# endif
-
+# ANGSD_EMOPTIM2_OPTION_FILTER=sites.list
 
 ##################################################
 # doMaf, doMajorMinor - calculate minor allele frequencies and major/minor pairs
@@ -119,21 +133,22 @@
 ##################################################
 # doThetas - calculate thetas
 ##################################################
-# Thetas can be generated on a chromosome by chromosome basis using
-# the ANGSD_OPTION_CHR option.
+# The default thetas recipe generates results on a chromosome by
+# chromosome basis. The recipe assumes targets are named
+# %_CHROMOSOME.thetas.gz
 
-# Make target list for all populations, 100 scaffolds, 
-# LAST:=100
-# NUMBERS:=$(shell seq 1 ${LAST})
-# CHROMOSOMES=$(foreach i,$(NUMBERS),scaffold_$(i)) chrM
+# Setup thetas bin targets - will generate bin and thetas.gz files
+# THETAS_BIN_TARGETS=$(foreach p,$(ANGSD_POPULATIONS), $(addprefix $(p)_, $(addsuffix .thetas.gz.bin, $(foreach c,$(ANGSD_CHROMOSOMES),$(c)))))
+# binthetas: $(THETAS_BIN_TARGETS)
 
-# Setup thetas targets
-# THETASTARGETS=$(foreach p,$(POPULATIONS), $(addprefix $(p)_, $(addsuffix .thetas.gz, $(foreach c,$(CHROMOSOMES),$(c)))))
-# thetas: $(THETASTARGETS)
+# Setup window-based estimates
+# PESTPG_TARGETS=$(foreach p,$(ANGSD_POPULATIONS), $(addprefix $(p)_, $(addsuffix .thetas.gz.bgid_pestPG, $(foreach c,$(ANGSD_CHROMOSOMES),$(c)))))
+# pestpg: $(PESTPG_TARGETS)
 
-# Setup pestPG targets
-# PESTTARGETS=$(subst gz,gz.bgid_pestPG,$(THETASTARGETS))
-# pestpg: $(PESTTARGETS)
+# There is also a simple plotting script for making plots of window-based estimates
+# Setup the pestpg targets:
+# PEST_PDF_TARGETS=$(subst bin,pdf,$(THETAS_BIN_TARGETS))
+# plotthetas: $(PESTPG_PDF_TARGETS)
 
 ##############################
 # Useful include files
@@ -151,4 +166,9 @@
 # If one needs to override recipes, these should be added here,
 # *after* the include statements
 ##############################
+
+##################################################
+# Additional stuff
+# Add custom rules here
+##################################################
 
