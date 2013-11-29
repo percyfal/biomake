@@ -36,10 +36,20 @@ pop = gsub("(^[A-Z]+)_.*", "\\1", infile)
 
 d <- read.table(infile)
 names(d) <- c("range", "chr", "pos", "tW", "tP", "tF", "tH", "tL", "tajD", "fulif", "fuliD", "fayH", "zengsE", "numSites")
+d <- cbind(d, d[,c("tW", "tP", "tF", "tH", "tL")] / d$numSites)
+names(d) <- c("range", "chr", "pos", "tW", "tP", "tF", "tH", "tL", "tajD", "fulif", "fuliD", "fayH", "zengsE", "numSites", "tW.norm", "tP.norm", "tF.norm", "tH.norm", "tL.norm")
 d$pop = pop
-d.stack <- cbind(stack(d[,c("tajD", "fuliD", "fulif", "fayH", "zengsE", "tW", "tP")]), pop=d$pop, pos=d$pos, chr=d$chr)
+d.stack <- cbind(stack(d[,c("numSites", "tajD", "fuliD", "fulif", "fayH", "zengsE", "tW", "tP", "tW.norm", "tP.norm")]), pop=d$pop, pos=d$pos, chr=d$chr)
 outfile <- args[2]
 
+# Redefine factor levels
+d.stack$ind <- factor(d.stack$ind, levels = c("numSites",  "tajD", "tW", "fuliD", "tW.norm", "fulif", "tP", "fayH", "tP.norm",   "zengsE"))
+
 pdf(outfile)
-xyplot(values ~ pos/1e6 | ind, data=d.stack, type="l", layout=c(1,7), xlab="pos (Mb)", scales=list(y=(relation="free")), strip=FALSE, strip.left=TRUE, main=paste(basename(infile), ", w:", window, ", s:", step, sep=""))
+print(xyplot(values ~ pos/1e6 | ind, data=d.stack, type="l", layout=c(2,5), xlab="pos (Mb)", scales=list(y=list(rot=45, relation="free")), strip=FALSE, strip.left=TRUE, main=paste(basename(infile), ", w:", window, ", s:", step, sep=""), par.settings=simpleTheme()))
+
+
+d.stack$ind <- factor(d.stack$ind, levels = c("numSites", "tW",  "tW.norm",  "tP", "tP.norm", "tajD", "fuliD", "fulif", "fayH", "zengsE"))
+print(xyplot(values ~ pos/1e6 | ind, data=d.stack, type="l", layout=c(1,10), xlab="pos (Mb)", scales=list(y=list(rot=45, relation="free")), strip=FALSE, strip.left=TRUE, main=paste(basename(infile), ", w:", window, ", s:", step, sep=""), par.settings=simpleTheme()))
+
 dev.off()
