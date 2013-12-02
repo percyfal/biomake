@@ -12,13 +12,15 @@ endif
 
 # Input label
 MERGE_INPUT_SUFFIX=.trimmed.sync.sort.rg.bam
+SAMPLE_TARGET_SUFFIX=.sort.merge.realign.recal.clip.bam
+VCF_TARGET_SUFFIX=.sort.merge.raw.vcf
 
 # Targets
 FLOWCELL_TARGETS=$(subst $(READ1_LABEL).fastq.gz,$(MERGE_INPUT_SUFFIX),$(FASTQFILES))
-SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.realign.recal.clip.bam)
+SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s)$(SAMPLE_TARGET_SUFFIX))
 # Raw vcf targets - these have to exist *before* realignment is run,
 # otherwise the default realignment rule is used
-VCF_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s).sort.merge.raw.vcf)
+VCF_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s)$(VCF_TARGET_SUFFIX))
 
 # Picard targets
 PICARD_DUPMETRICS_TARGETS=$(realpath $(subst .recal.clip.bam,.dup_metrics,$(SAMPLE_TARGETS)))
@@ -26,19 +28,7 @@ PICARD_HSMETRICS_TARGETS=$(realpath $(subst .recal.clip.bam,.hs_metrics,$(SAMPLE
 PICARD_INSERTMETRICS_TARGETS=$(realpath $(subst .recal.clip.bam,.insert_metrics,$(SAMPLE_TARGETS)) $(subst .bam,.insert_metrics,$(FLOWCELL_TARGETS)))
 PICARD_ALIGNMETRICS_TARGETS=$(subst .recal.clip.bam,.align_metrics,$(SAMPLE_TARGETS)) $(subst .bam,.align_metrics,$(FLOWCELL_TARGETS))
 
-# Target rules
-flowcells: $(FLOWCELL_TARGETS)
-samples: $(VCF_TARGETS) $(SAMPLE_TARGETS)
-
-$(HALO_TARGET_PREFIX).bam: $(VCF_TARGETS) $(SAMPLE_TARGETS)
-	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
-	@if [ $(NTARGETS) != 0 ]; then \
-	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai; \
-	fi
-
-halo: all
-
-all: $(HALO_TARGET_PREFIX).filtered.eval_metrics metrics.txt
+# See phony targets after include statements
 
 # Batched SLURM submission:
 #
@@ -201,6 +191,21 @@ include $(MAKEDIR)Makefile.picard
 include $(MAKEDIR)Makefile.gatk
 
 
+# Target rules
+flowcells: $(FLOWCELL_TARGETS)
+samples: $(FLOWCELL_TARGETS) $(VCF_TARGETS) $(SAMPLE_TARGETS)
+
+$(HALO_TARGET_PREFIX).bam: $(VCF_TARGETS) $(SAMPLE_TARGETS)
+	@$(eval NTARGETS=$(shell echo $(SAMPLE_TARGETS) | awk '{print NF}'))
+	@if [ $(NTARGETS) != 0 ]; then \
+	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(addprefix INPUT=,$(SAMPLE_TARGETS)) O=$@.tmp $(PICARD_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai; \
+	fi
+
+halo: all
+
+all: $(FLOWCELL_TARGETS) $(HALO_TARGET_PREFIX).filtered.eval_metrics metrics.txt
+
+
 ##############################
 # Overridden recipes
 ##############################
@@ -217,7 +222,8 @@ include $(MAKEDIR)Makefile.gatk
 
 # The following rule has as requirement *all* flowcell targets, but
 # the input files to a given merge operation are the sample-specific
-# bam files
-%.sort.merge.bam:
+# bam files. Unfortunately, it does not seem possible to filter the
+# flowcell targets based on a pattern in the prerequisite
+%.sort.merge.bam: $(FLOWCELL_TARGETS)
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(FLOWCELL_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_COMMON_OPTIONS) $(PICARD_MERGESAM_OPTIONS) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
