@@ -1,0 +1,45 @@
+#-*- makefile -*-
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
+#
+# sratools makefile rules
+# 
+
+# Note: this should point to the bin directory
+ifndef SRATOOLS_HOME
+SRATOOLS_HOME=.
+endif
+ifndef SRATOOLS_OPTIONS
+SRATOOLS_OPTIONS=
+endif
+
+# fastq-dump
+ifndef SRATOOLS_FASTQDUMP
+SRATOOLS_FASTQDUMP=$(SRATOOLS_HOME)/fastq-dump
+endif
+ifndef SRATOOLS_FASTQDUMPS_OPTIONS
+SRATOOLS_FASTQDUMP_OPTIONS=--split-3 -F
+endif
+
+%_1.fq: %.sra
+	$(SRATOOLS_FASTQDUMP) $(SRATOOLS_FASTQDUMP_OPTIONS) $< && mv ${*}_1.fastq $@ && if [ -e ${*}_2.fastq ]; then mv ${*}_2.fastq ${*}_2.fq; fi
+
+SRATOOLS_FASTQDUMP_OPTIONS+=--gzip
+%_1.fq.gz: %.sra
+	$(SRATOOLS_FASTQDUMP) $(SRATOOLS_FASTQDUMP_OPTIONS) $< && mv ${*}_1.fastq.gz $@ && if [ -e ${*}_2.fastq.gz ]; then mv ${*}_2.fastq.gz ${*}_2.fq.gz; fi
+
+##############################
+# settings
+##############################
+.PHONY: sratools-settings sratools-header
+
+print-%:
+	@echo '$*=$($*)'
+
+sratools-header:
+	@echo -e "\nMakefile.sratools options"
+	@echo "=============================="
+
+sratools-settings: sratools-header print-SRATOOLS_HOME print-SRATOOLS_OPTIONS print-SRATOOLS_FASTQDUMP print-SRATOOLS_FASTQDUMP_OPTIONS
