@@ -45,10 +45,48 @@ endif
 %-summary.pdf: %.chk
 	$(HTSLIB_HOME)/misc/plot-vcfcheck $< -p $*
 
+##############################
+# snpeff
+##############################
+ifndef SNPEFF_HOME
+SNPEFF_HOME=.
+endif
+ifndef SNPEFF_CONFIG
+SNPEFF_CONFIG=$(SNPEFF_HOME)/snpEff.config
+endif
+ifndef SNPEFF_OPTIONS
+SNPEFF_OPTIONS=-c $(SNPEFF_CONFIG) -o gatk
+endif
+ifndef SNPEFF_GENOME_VERSION
+SNPEFF_GENOME_VERSION=hg19
+endif
+ifndef SNPEFF_JAVA_MEM
+SNPEFF_JAVA_MEM=$(JAVA_MEM)
+endif
+ifndef SNPEFF_JAR
+SNPEFF_JAR=$(SNPEFF_HOME)/snpEff.jar
+endif
+ifndef SNPEFF_JAVA_TMPDIR
+SNPEFF_JAVA_TMPDIR=$(JAVA_TMPDIR)
+endif
+ifndef SNPEFF_COMMAND
+SNPEFF_COMMAND=java -Xmx$(SNPEFF_JAVA_MEM) -Djava.io.tmpdir=$(SNPEFF_JAVA_TMPDIR) -jar $(SNPEFF_JAR)
+endif
+ifndef SNPEFF_DBLIST
+SNPEFF_DBLIST=hg19
+endif
+# DB targets
+SNPEFF_DBLIST_TARGETS:=$(addprefix snpeff-download-,$(SNPEFF_DBLIST))
 
-#
+snpeff-download-%:
+	cd $(SNPEFF_HOME) && java -jar $(SNPEFF_JAR) download $*
+
+%.annotated.vcf: %.vcf
+	$(SNPEFF_COMMAND) $(SNPEFF_OPTIONS) $(SNPEFF_GENOME_VERSION) $< > $@.tmp && mv $@.tmp $@
+
+##############################
 # annovar
-# 
+##############################
 ifndef ANNOVAR_HOME
 ANNOVAR_HOME=.
 endif
@@ -114,4 +152,9 @@ annovar-header:
 	@echo -e "\nannovar options"
 	@echo "--------------------"
 
-variation-settings: variation-header vcftools-header print-VCFTOOLS_HOME print-VCFTOOLS_OPTIONS print-VCFTOOLS_STATS_OPTIONS print-HTSLIB_HOME print-VCF_HOME annovar-header print-ANNOVAR_HOME print-ANNOVAR_OPTIONS print-ANNOVAR_DB print-ANNOVAR_BUILDVER print-ANNOVAR_DBLIST print-ANNOVAR_DBLIST_WEBFROM_ANNOVAR print-ANNOVAR_DBLIST_TARGETS print-ANNOVAR_DBLIST_WEBFROM_ANNOVAR_TARGETS print-ANNOVAR_TABLE_OPTIONS print-ANNOVAR_CONVERT_OPTIONS
+snpeff-header:
+	@echo -e "\nsnpeff options"
+	@echo "--------------------"
+
+variation-settings: variation-header vcftools-header print-VCFTOOLS_HOME print-VCFTOOLS_OPTIONS print-VCFTOOLS_STATS_OPTIONS print-HTSLIB_HOME print-VCF_HOME snpeff-header print-SNPEFF_HOME print-SNPEFF_CONFIG print-SNPEFF_OPTIONS print-SNPEFF_GENOME_VERSION print-SNPEFF_JAVA_MEM print-SNPEFF_JAR print-SNPEFF_JAVA_TMPDIR print-SNPEFF_COMMAND print-SNPEFF_DBLIST annovar-header print-ANNOVAR_HOME print-ANNOVAR_OPTIONS print-ANNOVAR_DB print-ANNOVAR_BUILDVER print-ANNOVAR_DBLIST print-ANNOVAR_DBLIST_WEBFROM_ANNOVAR print-ANNOVAR_DBLIST_TARGETS print-ANNOVAR_DBLIST_WEBFROM_ANNOVAR_TARGETS print-ANNOVAR_TABLE_OPTIONS print-ANNOVAR_CONVERT_OPTIONS
+
