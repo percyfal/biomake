@@ -1,0 +1,52 @@
+#-*- makefile -*-
+#
+# File: Makefile.rnaseq
+#
+# Description: rnaseq make general rules
+#
+
+##############################
+# RSEM
+##############################
+ifndef RSEM_HOME
+RSEM_HOME=.
+endif
+ifndef RSEM_OPTIONS
+RSEM_OPTIONS=
+endif
+ifndef RSEM_REF
+RSEM_REF=$(REF)
+endif
+ifndef RSEM_THREADS
+RSEM_THREADS=$(THREADS)
+endif
+
+# rsem-prepare-reference
+ifndef RSEM_PREPARE_REFERENCE
+RSEM_PREPARE_REFERENCE=$(RSEM_HOME)/rsem-prepare-reference
+endif
+ifndef RSEM_PREPARE_REFERENCE_OPTIONS
+RSEM_PREPARE_REFERENCE_OPTIONS=
+endif
+ifndef RSEM_PREPARE_REFERENCE_OPTION_REF
+RSEM_PREPARE_REFERENCE_OPTION_REF=
+endif
+%.transcripts.fa: $(RSEM_PREPARE_REFERENCE_OPTION_REF)
+	$(RSEM_PREPARE_REFERENCE) $(RSEM_PREPARE_REFERENCE_OPTIONS) $< $*
+
+
+# rsem-calculate-expression
+ifndef RSEM_CALCULATE_EXPRESSION
+RSEM_CALCULATE_EXPRESSION=$(RSEM_HOME)/rsem-calculate-expression
+endif
+ifndef RSEM_CALCULATE_EXPRESSION_OPTIONS
+RSEM_CALCULATE_EXPRESSION_OPTIONS=--no-bam-output --bowtie-chunkmbs 512 
+endif
+# Hack to work with bowtie: See http://atgcio.blogspot.se/2013/08/fifos-and-mapping-with-bowtie-using.html
+%.rsem: %$(READ1_LABEL).fq.gz %$(READ2_LABEL).fq.gz 
+	mkfifo read1.fifo
+	mkfifo read2.fifo
+	zcat $(word 1, $^) > read1.fifo &
+	zcat $(word 2, $^) > read2.fifo &
+	$(RSEM_CALCULATE_EXPRESSION) $(RSEM_CALCULATE_EXPRESSION_OPTIONS) -p $(RSEM_THREADS) --paired-end read1.fifo read2.fifo $(RSEM_REF) $* &> $@.tmp && mv $@.tmp $@
+	rm -f read1.fifo read2.fifo
