@@ -48,9 +48,49 @@ endif
 %$(READ2_LABEL).trimmed.sync.fastq.gz: %$(READ1_LABEL).trimmed.sync.fastq.gz
 	@echo $@ should be done in rule 1
 
+
+##############################
+# Trimmomatic
+##############################
+ifndef TRIMMOMATIC_HOME
+TRIMMOMATIC_HOME=.
+endif
+ifndef TRIMMOMATIC_THREADS
+TRIMMOMATIC_THREADS=$(THREADS)
+endif
+ifndef TRIMMOMATIC_OPTIONS
+TRIMMOMATIC_OPTIONS=-phred33 -threads $(TRIMMOMATIC_THREADS)
+endif
+ifndef TRIMMOMATIC_PROCESSING_OPTIONS
+TRIMMOMATIC_PROCESSING_OPTIONS=LEADING:15 TRAILING:15 MINLEN:36
+endif
+
+ifndef TRIMMOMATIC_JAVA_MEM
+TRIMMOMATIC_JAVA_MEM=$(JAVA_MEM)
+endif
+ifndef TRIMMOMATIC_JAR
+TRIMMOMATIC_JAR=$(TRIMMOMATIC_HOME)/trimmomatic.jar
+endif
+ifndef TRIMMOMATIC_JAVA_TMPDIR
+TRIMMOMATIC_JAVA_TMPDIR=$(JAVA_TMPDIR)
+endif
+ifndef TRIMMOMATIC_COMMAND
+TRIMMOMATIC_COMMAND=java -Xmx$(TRIMMOMATIC_JAVA_MEM) -Djava.io.tmpdir=$(TRIMMOMATIC_JAVA_TMPDIR) -jar $(TRIMMOMATIC_JAR)
+endif
+
+%.trimmomatic.PE: %$(READ1_LABEL).fq.gz %$(READ2_LABEL).fq.gz 
+	$(TRIMMOMATIC_COMMAND) PE $(TRIMMOMATIC_OPTIONS) $^ $*$(READ1_LABEL).P.qtrim.fq.gz $*$(READ1_LABEL).U.qtrim.fq.gz $*$(READ2_LABEL).P.qtrim.fq.gz $*$(READ2_LABEL).U.qtrim.fq.gz $(TRIMMOMATIC_PROCESSING_OPTIONS) &> $@.tmp && mv $@.tmp $@
+
+%$(READ1_LABEL).P.qtrim.fq.gz: %.trimmomatic.PE
+	echo Running rule $*.trimmomatic.PE to generate $@
+
+%$(READ1_LABEL).U.qtrim.fq.gz: %.trimmomatic.PE
+	echo Running rule $*.trimmomatic.PE to generate $@
+
 ##############################
 # settings
 ##############################
+.PRECIOUS: %.trimmomatic.PE
 .PHONY: sequenceprocessing-settings sequenceprocessing-header
 
 print-%:
