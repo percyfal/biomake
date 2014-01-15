@@ -79,7 +79,6 @@ endif
 	$(PICARD_JAVA) $(PICARD_HOME)/CollectAlignmentSummaryMetrics.jar $(PICARD_OPTIONS) I=$< O=$@.tmp R=$(PICARD_REF) && mv $@.tmp $@
 
 %.hs_metrics: %.bam %.bai
-	echo $^
 	$(PICARD_JAVA) $(PICARD_HOME)/CalculateHsMetrics.jar $(PICARD_OPTIONS) TI=$(PICARD_TARGET_REGIONS) BI=$(PICARD_BAIT_REGIONS) I=$< O=$@.tmp R=$(PICARD_REF) && mv $@.tmp $@
 
 # Shorthands
@@ -107,28 +106,31 @@ metrics: dupmetrics hsmetrics insertmetrics alignmetrics
 
 # Summaries
 # NB: these rules require scilife directory structure SAMPLE/FLOWCELL/SAMPLE.fastq
-ifndef PICARD_FASTQFILES
-PICARD_FASTQFILES=
+align_metrics.txt: $(PICARD_ALIGNMETRICS_TARGETS)
+	@for f in $(sort $(PICARD_ALIGNMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL", "INPUT_FILE"}' $$f; done | head -1 > $@.tmp;
+	@for f in $(sort $(PICARD_ALIGNMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc -v INPUT_FILE=$$f -v BN=$$(basename $$f) '{OFS="\t"; if (match(BN, SAMPLE)==0 || SAMPLE==".") {SAMPLE = FLOWCELL; FLOWCELL="NA"}  if (NR==8 || NR==9 || NR==10) print $$0,SAMPLE,FLOWCELL,INPUT_FILE}' $$f; done >> $@.tmp && mv $@.tmp $@;
+
+dup_metrics.txt: $(PICARD_DUPMETRICS_TARGETS)
+	@for f in $(sort $(PICARD_DUPMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL", "INPUT_FILE"}' $$f; done | head -1 > $@.tmp;
+	@for f in $(sort $(PICARD_DUPMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc -v INPUT_FILE=$$f -v BN=$$(basename $$f) '{OFS="\t";  if (match(BN, SAMPLE)==0 || SAMPLE==".") {SAMPLE = FLOWCELL; FLOWCELL="NA"} if (NR==8) print $$0,SAMPLE,FLOWCELL,INPUT_FILE}' $$f; done >> $@.tmp && mv $@.tmp $@;
+
+insert_metrics.txt: $(PICARD_INSERTMETRICS_TARGETS)
+	@for f in $(sort $(PICARD_INSERTMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL", "INPUT_FILE"}' $$f; done | head -1 > $@.tmp;
+	@for f in $(sort $(PICARD_INSERTMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc -v INPUT_FILE=$$f -v BN=$$(basename $$f) '{OFS="\t"; if (match(BN, SAMPLE)==0 || SAMPLE==".") {SAMPLE = FLOWCELL; FLOWCELL="NA"} if (NR==8) print $$0,SAMPLE,FLOWCELL,INPUT_FILE}' $$f; done >> $@.tmp && mv $@.tmp $@;
+
+hs_metrics.txt: $(PICARD_HSMETRICS_TARGETS)
+	@for f in $(sort $(PICARD_HSMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL", "INPUT_FILE"}' $$f; done | head -1 > $@.tmp;
+	@for f in $(sort $(PICARD_HSMETRICS_TARGETS)); do bn=$$(dirname $$f); fc=$$(basename $$bn); sampledir=$$(dirname $$bn); sample=$$(basename $$sampledir); $(AWK) -v SAMPLE=$$sample -v FLOWCELL=$$fc -v INPUT_FILE=$$f -v BN=$$(basename $$f) '{OFS="\t"; if (match(BN, SAMPLE)==0 || SAMPLE==".") {SAMPLE = FLOWCELL; FLOWCELL="NA"} if (NR==8) print $$0,SAMPLE,FLOWCELL,INPUT_FILE}' $$f; done >> $@.tmp && mv $@.tmp $@;
+
+metrics.txt: align_metrics.txt dup_metrics.txt insert_metrics.txt hs_metrics.txt
+
+# Simple metrics plot functions
+ifndef PLOTMETRICS
+PLOTMETRICS=$(MAKEDIR)scripts/plotMetrics.R
 endif
-ifndef PICARD_METRICS_LABEL
-PICARD_METRICS_LABEL=.sort.merge.dup
-endif
+%_metrics.pdf: %_metrics.txt
+	$(PLOTMETRICS) $< $@.tmp $* && mv $@.tmp $@
 
-align_metrics.txt:
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL"}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).align_metrics; done | head -1 > $@.tmp;
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t"; if (NR==8 || NR==9 || NR==10) print $$0,SAMPLE,FLOWCELL}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).align_metrics; done >> $@.tmp && mv $@.tmp $@;
-
-dup_metrics.txt:
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL"}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).dup_metrics; done | head -1 > $@.tmp;
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t"; if (NR==8) print $$0,SAMPLE,FLOWCELL}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).dup_metrics; done >> $@.tmp && mv $@.tmp $@;
-
-insert_metrics.txt:
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL"}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).insert_metrics; done | head -1 > $@.tmp;
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t"; if (NR==8) print $$0,SAMPLE,FLOWCELL}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).insert_metrics; done >> $@.tmp && mv $@.tmp $@;
-
-hs_metrics.txt:
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t";if (NR==7) print $$0,"SAMPLE_ID","FLOWCELL"}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).hs_metrics; done | head -1 > $@.tmp;
-	@for f in $(PICARD_FASTQFILES); do bn=`dirname $$f`; fc=`basename $$bn`; sampledir=`dirname $$bn`; sample=`basename $$sampledir`; awk -v SAMPLE=$$sample -v FLOWCELL=$$fc '{OFS="\t"; if (NR==8) print $$0,SAMPLE,FLOWCELL}' $$sampledir/$$sample$(PICARD_METRICS_LABEL).hs_metrics; done >> $@.tmp && mv $@.tmp $@;
 
 # Add read group information
 %.rg.bam: %.bam
@@ -147,11 +149,9 @@ ifndef PICARD_MERGESAM_TARGETS
 PICARD_MERGESAM_TARGETS=
 endif
 
-%.merge.bam: $(PICARD_MERGESAM_TARGETS)
+%.merge.bam: 
 	@$(eval INPUTFILES=$(addprefix INPUT=,$(filter $(dir $*)%, $(PICARD_MERGESAM_TARGETS))))
 	$(PICARD_JAVA) $(PICARD_HOME)/MergeSamFiles.jar $(INPUTFILES) O=$@.tmp $(PICARD_OPTIONS_COMMON) $(PICARD_MERGESAM_OPTION) && mv $@.tmp $@ && mv $@.tmp.bai $(@:.bam=).bai
-
-
 
 ##############################
 # settings
@@ -165,4 +165,4 @@ picard-header:
 	@echo -e "\nMakefile.picard options"
 	@echo "======================="
 
-picard-settings: picard-header print-PICARD_HOME print-PICARD_JAVA_MEM print-PICARD_JAVA_TMPDIR print-PICARD_JAVA print-PICARD_REF print-PICARD_TARGET_REGIONS print-PICARD_BAIT_REGIONS print-PICARD_OPTIONS_COMMON print-PICARD_ALIGNMETRICS_TARGETS print-PICARD_DUPMETRICS_TARGETS print-PICARD_HSMETRICS_TARGETS print-PICARD_INSERTMETRICS_TARGETS print-PICARD_FASTQFILES print-PICARD_METRICS_LABEL print-PICARD_SORTSAM_OPTIONS print-PICARD_MERGESAM_OPTIONS print-PICARD_MERGESAM_TARGETS
+picard-settings: picard-header print-PICARD_HOME print-PICARD_JAVA_MEM print-PICARD_JAVA_TMPDIR print-PICARD_JAVA print-PICARD_REF print-PICARD_TARGET_REGIONS print-PICARD_BAIT_REGIONS print-PICARD_OPTIONS_COMMON print-PICARD_ALIGNMETRICS_TARGETS print-PICARD_DUPMETRICS_TARGETS print-PICARD_HSMETRICS_TARGETS print-PICARD_INSERTMETRICS_TARGETS print-PLOTMETRICS print-PICARD_SORTSAM_OPTIONS print-PICARD_MERGESAM_OPTIONS print-PICARD_MERGESAM_TARGETS

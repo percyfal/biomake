@@ -90,6 +90,10 @@ endif
 ifndef SLURM_PARTITION
 SLURM_PARTITION=devel
 endif
+# Cluster name
+ifndef SLURM_CLUSTER
+SLURM_CLUSTER=
+endif
 # Constraint
 ifndef SLURM_CONSTRAINT
 SLURM_CONSTRAINT=
@@ -109,11 +113,15 @@ endif
 ifndef SLURM_COMMAND
 SLURM_COMMAND=
 endif
-# Options to pass to make in sbatch file, e.g. -j 4 -k
+# SLURM make_j option: number of parallel processes - not necessarily
+# same as number of cores
+ifndef SLURM_MAKE_J
+SLURM_MAKE_J=1
+endif
+# Options to pass to make in sbatch file, e.g. -k
 ifndef SLURM_MAKE_OPTIONS
 SLURM_MAKE_OPTIONS=
 endif
-
 # SLURM_MODULES: list of modules to load
 ifndef SLURM_MODULES
 SLURM_MODULES=
@@ -127,8 +135,8 @@ ifeq ($(SLURM_ACCOUNT),)
 else
 	echo -e "#!/bin/bash -l" > $@.sh 
 	echo -e "#SBATCH" -p $(SLURM_PARTITION) >> $@.sh 
-ifeq ($(SLURM_PARTITION),halvan)
-	echo -e "#SBATCH" -M $(SLURM_PARTITION) >> $@.sh
+ifneq ($(SLURM_CLUSTER),)
+	echo -e "#SBATCH" -M $(SLURM_CLUSTER) >> $@.sh
 endif
 	echo -e "#SBATCH" -A $(SLURM_ACCOUNT) >> $@.sh 
 	echo -e "#SBATCH" -n $(SLURM_N_CORES) >> $@.sh 
@@ -162,14 +170,14 @@ ifneq ($(SLURM_CONSTRAINT),)
 endif
 
 	echo -e "\n\n#" `date` >> $@.sh 
+	echo -e "\n\n $(SLURM_PREHOOK) \n\n" >> $@.sh
 ifneq ($(SLURM_MODULES),)
 	echo -e $(addprefix "module load ",$(addsuffix "\\n",$(SLURM_MODULES))) >> $@.sh
 endif
-	echo -e "\n\n"$(SLURM_PREHOOK) >> $@.sh
 ifneq ($(SLURM_COMMAND),)
 	echo -e $(SLURM_COMMAND) >> $@.sh
 else
-	echo -e $(MAKE) $(SLURM_MAKE_OPTIONS) $*.log >> $@.sh
+	echo -e $(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) $*.log >> $@.sh
 endif
 	$(SBATCH) $(SBATCH_OPTIONS) $@.sh
 endif
@@ -189,7 +197,7 @@ endif
 print-%:
 	@echo '$*=$($*)'
 
-general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS general-slurm-header print-SLURM_PARTITION print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_OUT print-SLURM_ERR print-SLURM_MODULES print-SLURM_MAKE_J print-SLURM_EXTRA_HEADER print-SLURM_PREHOOK
+general-settings: general-header print-AWK print-CAT print-ZCAT print-GREP print-GZIP print-GZIP_OPTIONS print-SBATCH print-SBATCH_OPTIONS general-slurm-header print-SLURM_PARTITION print-SLURM_CLUSTER print-SLURM_N_CORES print-SLURM_N_NODES print-SLURM_ACCOUNT print-SLURM_WORKDIR print-SLURM_USER print-SLURM_MAILUSER print-SLURM_MAILTYPE print-SLURM_TIME print-SLURM_JOBNAME print-SLURM_OUT print-SLURM_ERR print-SLURM_MODULES print-SLURM_MAKE_J print-SLURM_MAKE_OPTIONS print-SLURM_EXTRA_HEADER print-SLURM_PREHOOK
 
 general-header:
 	@echo -e "\nMakefile.general options"
