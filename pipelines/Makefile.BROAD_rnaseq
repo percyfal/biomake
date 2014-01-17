@@ -1,0 +1,112 @@
+#-*- makefile -*-
+#
+# File: Makefile.BROAD_rnaseq
+#
+# Description: make implementation of the BROAD RNASeq pipeline
+# developed by the Regev lab
+#
+
+# If set to .P.qtrim.fq.gz do trimming
+FASTQ_TARGET_SUFFIX=.P.qtrim.fq.gz
+SAMPLE_TARGET_SUFFIX=
+
+# Targets
+RNASEQC_TARGETS=
+SAMPLE_TARGETS=$(foreach s,$(SAMPLES),$(s)/$(s)$(SAMPLE_TARGET_SUFFIX))
+
+# See phony targets after include statements
+
+# Batched SLURM submission:
+#
+# 1. partition target list into batch sized lists
+#
+# 2. submit each list independently, tracking the SLURM id
+#
+# 3. submit the merge target, with the tracked SLURM ids as
+#    dependencies
+#
+ifndef RNASEQ_BATCH_SIZE
+RNASEQ_BATCH_SIZE=8
+endif
+rnaseq-sbatch:
+	@echo Running rnaseq-sbatch recipe: submit data to queue manager
+	@echo All sample targets: $(SAMPLE_TARGETS)
+	@echo All samples: $(SAMPLES)
+	@$(eval NTARGETS=$(shell echo $(SAMPLES) | awk '{print NF}'))
+	@i=0; sbatchcounter=0; SAMPLELIST=; JOBNAMES=""; for SMP in $(SAMPLES); do \
+	let i=i+1; \
+	SAMPLELIST="$$SAMPLELIST$$SMP "; \
+	if [ $$(($$i % $(RNASEQ_BATCH_SIZE))) == 0 ] || [ $$i == $(NTARGETS) ]; then  \
+	let sbatchcounter=sbatchcounter+1; \
+	$(MAKE) rnaseq-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=rnaseq-$$sbatchcounter.out SLURM_ERR=rnaseq-$$sbatchcounter.err ;\
+	$(MAKE) rnaseq-settings SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=rnaseq-$$sbatchcounter.out SLURM_ERR=rnaseq-$$sbatchcounter.err > rnaseq-$$sbatchcounter.settings; \
+	$(MAKE) -pn rnaseq-$$sbatchcounter.sbatch SLURM_COMMAND="$(MAKE) -j $(SLURM_MAKE_J) $(SLURM_MAKE_OPTIONS) samples SAMPLES=\'$$SAMPLELIST\'" SLURM_OUT=rnaseq-$$sbatchcounter.out SLURM_ERR=rnaseq-$$sbatchcounter.err >> rnaseq-$$sbatchcounter.settings; \
+	JOBNAMES="$$JOBNAMES,rnaseq-$$sbatchcounter"; \
+	SAMPLELIST=; \
+	fi \
+	done ; 
+
+# Add sbatch submission of entire pipeline with waitfor requirements
+# based on the submitted jobs above. I have not figured out how to get
+# the JOBIDS easily from slurm output though.
+
+# JOBIDS=$(shell `jobinfo -n $$JOBNAMES -u $(SLURM_USER) | $(GREP) $(SLURM_ACCOUNT) | $(AWK) '{print $$1}' `); \
+
+# Clean
+CLEANTARGETS=
+clean:
+	rm -f $(CLEANTARGETS)
+
+##############################
+# settings
+##############################
+.PHONY: %.log rnaseq all rnaseq-settings rnaseq-header
+
+print-%:
+	@echo '$*=$($*)'
+
+rnaseq-header:
+	@echo -e "\nMakefile.rnaseq options"
+	@echo "====================="
+
+rnaseq-targets:
+	@echo -e "\nrnaseq targets"
+	@echo "---------------------"
+
+print-SAMPLE_TARGETS:
+	@echo -e '\nSAMPLE_TARGETS=$(SAMPLE_TARGETS)'
+
+rnaseq-settings: rnaseq-header print-RNASEQ_TARGET_PREFIX print-RNASEQ_BATCH_SIZE
+
+##############################
+# Include files
+#
+# These are and should be put last since we use ifndef statements to
+# check if options have been set. The included options should be the
+# last resort.
+#
+##############################
+# The directory of this makefile
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+
+# Makefile includes
+include $(MAKEDIR)Makefile.ngsvars
+include $(MAKEDIR)Makefile.general
+include $(MAKEDIR)Makefile.sequenceprocessing
+include $(MAKEDIR)Makefile.tuxedo
+include $(MAKEDIR)Makefile.rnaseq
+
+
+# Target rules
+samples: $(SAMPLE_TARGETS)
+
+rnaseq: all
+
+all: $(FLOWCELL_TARGETS) $(RNASEQ_TARGET_PREFIX).filtered.eval_metrics metrics.txt
+
+
+##############################
+# Overridden recipes
+##############################
+
+# Only define bam rule - use pipe to avoid unnecessary sam file creation

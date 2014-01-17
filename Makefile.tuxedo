@@ -1,0 +1,112 @@
+#-*- makefile -*-
+
+#
+# tuxedo suite makefile rules
+# 
+
+MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+ifeq ($(findstring Makefile.ngsvars,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.ngsvars
+endif
+ifeq ($(findstring Makefile.samtools,$(MAKEFILE_LIST)),)
+include $(MAKEDIR)Makefile.samtools
+endif
+
+# bowtie
+ifndef BOWTIE
+BOWTIE=bowtie
+endif
+ifndef BOWTIE_OPTION_THREADS
+BOWTIE_OPTION_THREADS=$(THREADS)
+endif
+ifndef BOWTIE_OPTIONS
+BOWTIE_OPTIONS=-p $(BOWTIE_OPTION_THREADS)
+endif
+ifndef BOWTIE_OPTION_INDEX
+BOWTIE_OPTION_INDEX=
+endif
+
+%.bam: %$(READ1_LABEL).fastq.gz %$(READ2_LABEL).fastq.gz
+	$(BOWTIE) mem $(BOWTIE_OPTIONS) $(BOWTIE_OPTION_INDEX) $^ | $(SAMTOOLS) view -Sbh - > $@.tmp && mv $@.tmp $@
+
+
+# bowtie2 
+ifndef BOWTIE2
+BOWTIE2=bowtie2
+endif
+ifndef BOWTIE2_OPTION_THREADS
+BOWTIE2_OPTION_THREADS=$(THREADS)
+endif
+ifndef BOWTIE2_OPTIONS
+BOWTIE2_OPTIONS=-p $(BOWTIE2_OPTION_THREADS)
+endif
+ifndef BOWTIE2_OPTION_INDEX
+BOWTIE2_OPTION_INDEX=$(BOWTIE_OPTION_INDEX)
+endif
+
+# tophat2
+ifndef TOPHAT2
+TOPHAT2=tophat2
+endif
+ifndef TOPHAT2_OPTION_THREADS
+TOPHAT2_OPTION_THREADS=$(THREADS)
+endif
+ifndef TOPHAT2_OPTION_INDEX
+TOPHAT2_OPTION_INDEX=$(BOWTIE2_OPTION_INDEX)
+endif
+ifndef TOPHAT2_OPTION_OUTPUT_DIR
+TOPHAT2_OPTION_OUTPUT_DIR=./tophat_out
+endif
+ifndef TOPHAT2_OPTIONS
+TOPHAT2_OPTIONS=-p $(TOPHAT2_OPTION_THREADS) -o $(TOPHAT2_OPTION_OUTPUT_DIR)
+endif
+
+
+# Write output to placeholder file; output is generally written to a
+# directory, which makes writing a "normal" make rule difficult
+%.tophat2: %$(READ1_LABEL).fq.gz %$(READ2_LABEL).fq.gz
+	$(TOPHAT2) $(TOPHAT2_OPTIONS) $(TOPHAT2_OPTION_INDEX) $^ &> $@.tmp && mv $@.tmp $@
+
+# cufflinks
+ifndef CUFFLINKS
+CUFFLINKS=cufflinks
+endif
+ifndef CUFFLINKS_OPTIONS
+CUFFLINKS_OPTIONS=
+endif
+ifndef CUFFLINKS_OPTION_OUTPUT_DIR
+CUFFLINKS_OPTION_OUTPUT_DIR=./
+endif
+ifndef CUFFLINKS_OPTION_TRANSCRIPT_ANNOT_GTF
+CUFFLINKS_OPTION_TRANSCRIPT_ANNOT_GTF=$(TRANSCRIPT_ANNOT_GTF)
+endif
+ifndef CUFFLINKS_ANNOT_LABEL
+CUFFLINKS_ANNOT_LABEL=$(ANNOT_LABEL)
+endif
+
+%.cufflinks_quant: %.tophat2 $(CUFFLINKS_OPTION_TRANSCRIPT_ANNOT_GTF)
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) --GTF $(word 2, $^) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL) &> $@.tmp && mv $@.tmp $@
+
+%.cufflinks: %.tophat2 
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR) &> $@.tmp && mv $@.tmp $@
+
+# NB: usually %.bam is accepted_hits.bam from tophat
+%.cufflinks: %.bam 
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $< -o $(CUFFLINKS_OPTION_OUTPUT_DIR) &> $@.tmp && mv $@.tmp $@
+
+
+##############################
+# settings
+##############################
+.PHONY: tuxedo-settings tuxedo-header
+.PRECIOUS: %.tophat2
+
+print-%:
+	@echo '$*=$($*)'
+
+tuxedo-header:
+	@echo -e "\nMakefile.tuxedo options"
+	@echo "===================="
+
+
+tuxedo-settings: tuxedo-header print-BOWTIE print-BOWTIE_OPTION_THREADS print-BOWTIE_OPTIONS print-BOWTIE_OPTION_INDEX print-BOWTIE2 print-BOWTIE2_OPTION_THREADS print-BOWTIE2_OPTIONS print-BOWTIE2_OPTION_INDEX print-TOPHAT2 print-TOPHAT2_OPTION_THREADS print-TOPHAT2_OPTIONS print-TOPHAT2_OPTION_INDEX
