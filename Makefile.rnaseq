@@ -14,8 +14,9 @@ endif
 ifndef RSEM_OPTIONS
 RSEM_OPTIONS=
 endif
-ifndef RSEM_REF
-RSEM_REF=$(REF)
+# NB: this is not a fasta reference! This file needs to be prepared by RSEM_PREPARE_REFERENCE
+ifndef RSEM_REFERENCE_NAME
+RSEM_REFERENCE_NAME=
 endif
 ifndef RSEM_THREADS
 RSEM_THREADS=$(THREADS)
@@ -29,9 +30,10 @@ ifndef RSEM_PREPARE_REFERENCE_OPTIONS
 RSEM_PREPARE_REFERENCE_OPTIONS=
 endif
 ifndef RSEM_PREPARE_REFERENCE_OPTION_REF
-RSEM_PREPARE_REFERENCE_OPTION_REF=
+RSEM_PREPARE_REFERENCE_OPTION_REF=$(REF)
 endif
-%.transcripts.fa: $(RSEM_PREPARE_REFERENCE_OPTION_REF)
+
+$(RSEM_REFERENCE_NAME).transcripts.fa: $(RSEM_PREPARE_REFERENCE_OPTION_REF)
 	$(RSEM_PREPARE_REFERENCE) $(RSEM_PREPARE_REFERENCE_OPTIONS) $< $*
 
 
@@ -48,5 +50,66 @@ endif
 	mkfifo read2.fifo
 	zcat $(word 1, $^) > read1.fifo &
 	zcat $(word 2, $^) > read2.fifo &
-	$(RSEM_CALCULATE_EXPRESSION) $(RSEM_CALCULATE_EXPRESSION_OPTIONS) -p $(RSEM_THREADS) --paired-end read1.fifo read2.fifo $(RSEM_REF) $* &> $@.tmp && mv $@.tmp $@
+	$(RSEM_CALCULATE_EXPRESSION) $(RSEM_CALCULATE_EXPRESSION_OPTIONS) -p $(RSEM_THREADS) --paired-end read1.fifo read2.fifo $(RSEM_REFERENCE_NAME) $* &> $@.tmp && mv $@.tmp $@
 	rm -f read1.fifo read2.fifo
+
+
+##############################
+# RNASeqQC
+##############################
+ifndef RNASEQC_HOME
+RNASEQC_HOME=.
+endif
+ifndef RNASEQC_OPTIONS
+RNASEQC_OPTIONS=-n 1000
+endif
+ifndef RNASEQC_JAVA_MEM
+RNASEQC_JAVA_MEM=$(JAVA_MEM)
+endif
+ifndef RNASEQC_JAR
+RNASEQC_JAR=$(RNASEQC_HOME)/RNA-SeQC.jar
+endif
+ifndef RNASEQC_JAVA_TMPDIR
+RNASEQC_JAVA_TMPDIR=$(JAVA_TMPDIR)
+endif
+ifndef RNASEQC_COMMAND
+RNASEQC_COMMAND=java -Xmx$(RNASEQC_JAVA_MEM) -Djava.io.tmpdir=$(RNASEQC_JAVA_TMPDIR) -jar $(RNASEQC_JAR)
+endif
+ifndef RNASEQC_OPTION_TRANSCRIPT_ANNOT_GTF
+RNASEQC_OPTION_TRANSCRIPT_ANNOT_GTF=$(TRANSCRIPT_ANNOT_GTF)
+endif
+ifndef RNASEQC_OPTION_REF
+RNASEQC_OPTION_REF=$(REF)
+endif
+ifndef RNASEQC_OPTION_BWArRNA
+RNASEQC_OPTION_BWArRNA=
+endif
+ifneq ($(RNASEQC_OPTION_TRANSCRIPT_ANNOT_GTF),)
+RNASEQC_OPTIONS+=-t $(RNASEQC_OPTION_TRANSCRIPT_ANNOT_GTF)
+endif
+ifneq ($(RNASEQC_OPTION_REF),)
+RNASEQC_OPTIONS+=-r $(RNASEQC_OPTION_REF)
+endif
+ifneq ($(RNASEQC_OPTION_BWArRNA),)
+RNASEQC_OPTIONS+=-r $(RNASEQC_OPTION_BWArRNA)
+endif
+
+# RNASEQC uses tophat alignments as input
+%.rnaseqc: %.bam %.bai
+	$(RNASEQC_COMMAND) $(RNASEQC_OPTIONS) -o $@.tmp -s "sample|$<|rnaseqQC" && mv $@.tmp $@
+
+##############################
+# settings
+##############################
+.PHONY: rsem-settings rnaseqc-header
+.PRECIOUS: 
+
+print-%:
+	@echo '$*=$($*)'
+
+rnaseq-header:
+	@echo -e "\nMakefile.rnaseq options"
+	@echo "===================="
+
+
+rnaseq-settings: rnaseq-header

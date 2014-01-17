@@ -55,6 +55,9 @@ endif
 %.sort.bam: %.bam
 	$(PICARD_JAVA) $(PICARD_HOME)/SortSam.jar I=$< O=$@.tmp $(PICARD_OPTIONS) $(PICARD_OPTION_SORTSAM) && mv $@.tmp $@
 
+%.resorted.bam: %.bam $(PICARD_REF)
+	$(PICARD_JAVA) $(PICARD_HOME)/ReorderSam.jar I=$< R=$(word 2,$^) O=$@.tmp $(PICARD_OPTIONS) && mv $@.tmp $@
+
 %.dup.bam: %.bam
 	$(PICARD_JAVA) $(PICARD_HOME)/MarkDuplicates.jar I=$< O=$@.tmp $(PICARD_OPTIONS) M=$(@:.bam=).dup_metrics && mv $@.tmp $@
 
@@ -130,7 +133,6 @@ PLOTMETRICS=$(MAKEDIR)scripts/plotMetrics.R
 endif
 %_metrics.pdf: %_metrics.txt
 	$(PLOTMETRICS) $< $@.tmp $* && mv $@.tmp $@
-
 
 # Add read group information
 %.rg.bam: %.bam

@@ -3,8 +3,18 @@
 #
 # ngs variable settings
 # 
+# The variables in this file serve as high-level global options. Many
+# will propagate to program-specific options. 
+#
+
+# REF: the fasta reference 
 ifndef REF
 REF=
+endif
+
+# annotation label, such as hg19, mm9
+ifndef ANNOT_LABEL
+ANNOT_LABEL=
 endif
 
 ifndef JAVA_MEM
@@ -41,6 +51,11 @@ READ1_LABEL=_R1_001
 endif
 ifndef READ2_LABEL
 READ2_LABEL=_R2_001
+endif
+
+# Transcript annotation gtf files
+ifndef TRANSCRIPT_ANNOT_GTF
+TRANSCRIPT_ANNOT_GTF=
 endif
 
 ##############################
