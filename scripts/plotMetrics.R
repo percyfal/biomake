@@ -19,7 +19,7 @@ dup <- function(y)  {
     x <- y[is.na(y$FLOWCELL),]
     x <- x[order(x$SAMPLE_ID),]
     print(
-        stripplot(PERCENT_DUPLICATION ~ SAMPLE_ID, data=x,
+        stripplot(100 * PERCENT_DUPLICATION ~ SAMPLE_ID, data=x,
                   scales=(list(x=list(rot=45))), par.settings=simpleTheme(pch=19),
                   ylim=c(-1,100), xlab="Sample", ylab="Percent duplication")
         )
@@ -125,12 +125,13 @@ align <- function(y) {
                   par.settings=simpleTheme(pch=19, col=cpal.out)
                   )
         )
-        
+
     # Flowcell-based plots
     x <- y[!is.na(y$FLOWCELL),]
     x <- x[order(x$SAMPLE_ID),]
 
-    print(
+    if(nrow(x) > 0) {
+      print(
         stripplot(100 * PCT_PF_READS_ALIGNED ~ SAMPLE_ID | CATEGORY,
                   groups=FLOWCELL, data=x, auto.key=list(space="right"),
                   scales=list(x=list(rot=45, draw=FALSE)),
@@ -138,6 +139,7 @@ align <- function(y) {
                   par.settings=simpleTheme(pch=19, col=cpal)
                   )
         )
+    }
 }
 
 args <- commandArgs(TRUE)
@@ -157,7 +159,7 @@ type <- match.arg(type, choices = c("align", "insert", "dup", "hs"))
 switch(type,
        align = align(x),
        insert = insert(x),
-       hs = prinths(x),
+       hs = hs(x),
        dup = dup(x)
        )
 dev.off()
