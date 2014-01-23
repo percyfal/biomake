@@ -58,14 +58,14 @@ ifndef TOPHAT2_OPTION_OUTPUT_DIR
 TOPHAT2_OPTION_OUTPUT_DIR=./tophat_out
 endif
 ifndef TOPHAT2_OPTIONS
-TOPHAT2_OPTIONS=-p $(TOPHAT2_OPTION_THREADS) -o $(TOPHAT2_OPTION_OUTPUT_DIR)
+TOPHAT2_OPTIONS=-p $(TOPHAT2_OPTION_THREADS) -o $(TOPHAT2_OPTION_OUTPUT_DIR).tmp
 endif
 
 
 # Write output to placeholder file; output is generally written to a
 # directory, which makes writing a "normal" make rule difficult
-%.tophat2: %$(READ1_LABEL).fq.gz %$(READ2_LABEL).fq.gz
-	$(TOPHAT2) $(TOPHAT2_OPTIONS) $(TOPHAT2_OPTION_INDEX) $^ &> $@.tmp && mv $@.tmp $@
+%.tophat2: %$(READ1_LABEL)$(FASTQ_SUFFIX).gz %$(READ2_LABEL)$(FASTQ_SUFFIX).gz
+	$(TOPHAT2) $(TOPHAT2_OPTIONS) $(TOPHAT2_OPTION_INDEX) $^ &> $@.tmp && mv $@.tmp $@ && mv $(TOPHAT2_OPTION_OUTPUT_DIR).tmp $(TOPHAT2_OPTION_OUTPUT_DIR)
 
 # cufflinks
 ifndef CUFFLINKS
@@ -85,15 +85,14 @@ CUFFLINKS_ANNOT_LABEL=$(ANNOT_LABEL)
 endif
 
 %.cufflinks_quant: %.tophat2 $(CUFFLINKS_OPTION_TRANSCRIPT_ANNOT_GTF)
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) --GTF $(word 2, $^) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL) &> $@.tmp && mv $@.tmp $@
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) --GTF $(word 2, $^) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp &> $@.tmp && mv $@.tmp $@ && mv $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL)
 
 %.cufflinks: %.tophat2 
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR) &> $@.tmp && mv $@.tmp $@
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(CUFFLINKS_OPTION_OUTPUT_DIR)
 
 # NB: usually %.bam is accepted_hits.bam from tophat
 %.cufflinks: %.bam 
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $< -o $(CUFFLINKS_OPTION_OUTPUT_DIR) &> $@.tmp && mv $@.tmp $@
-
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $< -o $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(CUFFLINKS_OPTION_OUTPUT_DIR)
 
 ##############################
 # settings

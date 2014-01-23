@@ -79,12 +79,18 @@ TRIMMOMATIC_COMMAND=java -Xmx$(TRIMMOMATIC_JAVA_MEM) -Djava.io.tmpdir=$(TRIMMOMA
 endif
 
 %.trimmomatic.PE: %$(READ1_LABEL).fq.gz %$(READ2_LABEL).fq.gz 
-	$(TRIMMOMATIC_COMMAND) PE $(TRIMMOMATIC_OPTIONS) $^ $*$(READ1_LABEL).P.qtrim.fq.gz $*$(READ1_LABEL).U.qtrim.fq.gz $*$(READ2_LABEL).P.qtrim.fq.gz $*$(READ2_LABEL).U.qtrim.fq.gz $(TRIMMOMATIC_PROCESSING_OPTIONS) &> $@.tmp && mv $@.tmp $@
+	$(TRIMMOMATIC_COMMAND) PE $(TRIMMOMATIC_OPTIONS) $^ $*$(READ1_LABEL).P.qtrim.fq.tmp.gz $*$(READ1_LABEL).U.qtrim.fq.tmp.gz $*$(READ2_LABEL).P.qtrim.fq.tmp.gz $*$(READ2_LABEL).U.qtrim.fq.tmp.gz $(TRIMMOMATIC_PROCESSING_OPTIONS) &> $@.tmp && mv $@.tmp $@ && mv $*$(READ1_LABEL).P.qtrim.fq.tmp.gz $*$(READ1_LABEL).P.qtrim.fq.gz && mv $*$(READ1_LABEL).U.qtrim.fq.tmp.gz $*$(READ1_LABEL).U.qtrim.fq.gz && mv $*$(READ2_LABEL).P.qtrim.fq.tmp.gz $*$(READ2_LABEL).P.qtrim.fq.gz && mv $*$(READ2_LABEL).U.qtrim.fq.tmp.gz $*$(READ2_LABEL).U.qtrim.fq.gz
 
 %$(READ1_LABEL).P.qtrim.fq.gz: %.trimmomatic.PE
 	echo Running rule $*.trimmomatic.PE to generate $@
 
 %$(READ1_LABEL).U.qtrim.fq.gz: %.trimmomatic.PE
+	echo Running rule $*.trimmomatic.PE to generate $@
+
+%$(READ2_LABEL).P.qtrim.fq.gz: %.trimmomatic.PE
+	echo Running rule $*.trimmomatic.PE to generate $@
+
+%$(READ2_LABEL).U.qtrim.fq.gz: %.trimmomatic.PE
 	echo Running rule $*.trimmomatic.PE to generate $@
 
 ##############################

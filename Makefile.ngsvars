@@ -52,6 +52,9 @@ endif
 ifndef READ2_LABEL
 READ2_LABEL=_R2_001
 endif
+ifndef FASTQ_SUFFIX
+FASTQ_SUFFIX=.fastq
+endif
 
 # Transcript annotation gtf files
 ifndef TRANSCRIPT_ANNOT_GTF
@@ -107,4 +110,4 @@ ngsvars-header:
 	@echo "========================"
 
 
-ngsvars-settings: ngsvars-header print-REF print-DBSNP print-JAVA_MEM print-THREADS print-TARGET_REGIONS print-BAIT_REGIONS print-INPUTDIR print-READ1_LABEL print-READ2_LABEL print-SAMPLE_PREFIX print-FLOWCELL_SUFFIX print-SAMPLES print-FLOWCELLRUNS print-FASTQFILES
+ngsvars-settings: ngsvars-header print-REF print-DBSNP print-JAVA_MEM print-THREADS print-TARGET_REGIONS print-BAIT_REGIONS print-INPUTDIR print-READ1_LABEL print-READ2_LABEL print-FASTQ_SUFFIX print-SAMPLE_PREFIX print-FLOWCELL_SUFFIX print-SAMPLES print-FLOWCELLRUNS print-FASTQFILES
