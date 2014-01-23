@@ -178,8 +178,8 @@ halo-settings: halo-header print-HALO_TARGET_PREFIX print-HALO_BATCH_SIZE print-
 # last resort.
 #
 ##############################
-# The directory of this makefile
-MAKEDIR = $(dir $(lastword $(MAKEFILE_LIST)))
+# The directory where general makefiles reside
+MAKEDIR = $(subst pipelines/,, $(dir $(lastword $(MAKEFILE_LIST))))
 
 # Makefile includes
 include $(MAKEDIR)Makefile.ngsvars
