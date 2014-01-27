@@ -49,7 +49,7 @@ endif
 	mkfifo $(dir $(word 2, $^))read2.fifo
 	zcat $(word 1, $^) > $(dir $(word 1, $^))read1.fifo &
 	zcat $(word 2, $^) > $(dir $(word 2, $^))read2.fifo &
-	$(RSEM_CALCULATE_EXPRESSION) $(RSEM_CALCULATE_EXPRESSION_OPTIONS) -p $(RSEM_THREADS) --paired-end read1.fifo read2.fifo $(RSEM_REFERENCE_NAME) $* &> $@.tmp && mv $@.tmp $@
+	$(RSEM_CALCULATE_EXPRESSION) $(RSEM_CALCULATE_EXPRESSION_OPTIONS) -p $(RSEM_THREADS) --paired-end $(dir $(word 1, $^))read1.fifo $(dir $(word 2, $^))read2.fifo $(RSEM_REFERENCE_NAME) $* &> $@.tmp && mv $@.tmp $@
 	rm -f $(dir $(word 1, $^))read1.fifo $(dir $(word 2, $^))read2.fifo
 
 

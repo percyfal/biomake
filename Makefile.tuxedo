@@ -94,11 +94,11 @@ endif
 	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) --GTF $(word 2, $^) $(dir $<)$(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL)
 
 %.cufflinks: %.tophat2 
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(dir $<)$(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(dir $<)$(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)
 
 # NB: usually %.bam is accepted_hits.bam from tophat
 %.cufflinks: %.bam 
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $< -o $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(CUFFLINKS_OPTION_OUTPUT_DIR)
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $< -o $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)
 
 ##############################
 # settings
