@@ -72,7 +72,7 @@ ifndef FLOWCELL_SUFFIX
 FLOWCELL_SUFFIX=XX
 endif
 ifndef SAMPLES
-SAMPLES = $(wildcard $(SAMPLE_PREFIX)*)
+SAMPLES = $(foreach s,$(SAMPLE_PREFIX), $(wildcard $(s)*))
 endif
 ifndef FLOWCELLRUNS
 FLOWCELLRUNS = $(foreach s,$(SAMPLES),$(wildcard $(s)/*$(FLOWCELL_SUFFIX)))

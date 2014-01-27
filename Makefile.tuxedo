@@ -34,6 +34,9 @@ endif
 ifndef BOWTIE2
 BOWTIE2=bowtie2
 endif
+ifndef BOWTIE2_BUILD
+BOWTIE2_BUILD=bowtie2-build
+endif
 ifndef BOWTIE2_OPTION_THREADS
 BOWTIE2_OPTION_THREADS=$(THREADS)
 endif
@@ -43,6 +46,9 @@ endif
 ifndef BOWTIE2_OPTION_INDEX
 BOWTIE2_OPTION_INDEX=$(BOWTIE_OPTION_INDEX)
 endif
+
+%: %.fa
+	$(BOWTIE2_BUILD) $< $@.tmp && rename $@.tmp $@ $(@)*
 
 # tophat2
 ifndef TOPHAT2
@@ -65,7 +71,7 @@ endif
 # Write output to placeholder file; output is generally written to a
 # directory, which makes writing a "normal" make rule difficult
 %.tophat2: %$(READ1_LABEL)$(FASTQ_SUFFIX).gz %$(READ2_LABEL)$(FASTQ_SUFFIX).gz
-	$(TOPHAT2) $(TOPHAT2_OPTIONS) $(TOPHAT2_OPTION_INDEX) $^ &> $@.tmp && mv $@.tmp $@ && mv $(TOPHAT2_OPTION_OUTPUT_DIR).tmp $(TOPHAT2_OPTION_OUTPUT_DIR)
+	$(TOPHAT2) $(TOPHAT2_OPTIONS) $(TOPHAT2_OPTION_INDEX) $^ &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(TOPHAT2_OPTION_OUTPUT_DIR).tmp $(dir $@)$(TOPHAT2_OPTION_OUTPUT_DIR)
 
 # cufflinks
 ifndef CUFFLINKS
@@ -85,10 +91,10 @@ CUFFLINKS_ANNOT_LABEL=$(ANNOT_LABEL)
 endif
 
 %.cufflinks_quant: %.tophat2 $(CUFFLINKS_OPTION_TRANSCRIPT_ANNOT_GTF)
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) --GTF $(word 2, $^) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp &> $@.tmp && mv $@.tmp $@ && mv $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp $(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL)
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) --GTF $(word 2, $^) $(dir $<)$(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL).tmp $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)_$(CUFFLINKS_ANNOT_LABEL)
 
 %.cufflinks: %.tophat2 
-	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(CUFFLINKS_OPTION_OUTPUT_DIR)
+	$(CUFFLINKS) $(CUFFLINKS_OPTIONS) $(dir $<)$(TOPHAT2_OPTION_OUTPUT_DIR)/accepted_hits.bam -o $(CUFFLINKS_OPTION_OUTPUT_DIR).tmp &> $@.tmp && mv $@.tmp $@ && mv $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR).tmp $(dir $@)$(CUFFLINKS_OPTION_OUTPUT_DIR)
 
 # NB: usually %.bam is accepted_hits.bam from tophat
 %.cufflinks: %.bam 
