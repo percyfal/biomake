@@ -42,27 +42,16 @@ label.outliers <- function(x, x.labels, f=rep(1,nrow(x))) {
 dup <- function(y)  {
     x <- y[is.na(y$FLOWCELL),]
     x <- x[order(x$SAMPLE_ID),]
-    plot.param <- highlight.outliers(x$PERCENT_DUPLICATION, x$SAMPLE_ID)
-    print(
-        stripplot(100 * PERCENT_DUPLICATION ~ SAMPLE_ID, data=x,
-                  scales=list(x=list(rot=45, labels=plot.param$labels)),
-                  par.settings=simpleTheme(pch=19), col=plot.param$col,
-                  ylim=c(-1,100), xlab="Sample", ylab="Percent duplication")
-      )
 
-    g <- x$PERCENT_DUPLICATION %in% boxplot(x$PERCENT_DUPLICATION, plot=FALSE)$out
-    qc <- rep("Not outlier", length(x$SAMPLE_ID))
-    qc[g] <- as.character(x$SAMPLE_ID[g])
-    
     print(
       stripplot(100 * PERCENT_DUPLICATION ~ SAMPLE_ID, data=x,
-                scales=list(x=list(rot=45, draw=FALSE)), ylab="Percent duplication", xlab="Sample", main="...",
+                scales=list(x=list(draw=FALSE)), ylab="Percent duplication", xlab="Sample", main="",
                 par.settings=simpleTheme(pch=19, col=cpal.out),
                 auto.key=list(space="right"),
-                groups = qc,
+                groups = label.outliers(x$PERCENT_DUPLICATION, x$SAMPLE_ID)
                 )
       )
-    
+   
 }
 
 insert <- function(y) {
@@ -110,7 +99,7 @@ hs <- function(y) {
     print(
         stripplot(100 * PCT_USABLE_BASES_ON_TARGET ~ SAMPLE_ID, data=x,
                   scales=list(x=list(draw=FALSE)),
-                  ylab="Percent of sequenced bases", xlab="Sample", main="Percent usable bases (matching target and de-duped, if applicable)",
+                  ylab="Percent of sequenced bases", xlab="Sample", main="Percent usable bases\n(usable = matching target and, if applicable, de-duped)",
                   par.settings=simpleTheme(pch=19, col=cpal.out),
                   auto.key=list(space="right"),
                   groups = label.outliers(x$PCT_USABLE_BASES_ON_TARGET, x$SAMPLE_ID)
@@ -127,6 +116,17 @@ hs <- function(y) {
                   groups = label.outliers(x$ON_TARGET_BASES / x$PF_UQ_BASES_ALIGNED, x$SAMPLE_ID)
                   )
         )   
+
+    ## Target coverage as a function of read count
+    print(
+        xyplot(100*PCT_TARGET_BASES_10X ~ TOTAL_READS/1e6, data=x,
+               ylab="Percent of targeted bases with 10X coverage", xlab="Sequenced reads (millions)",
+               main="Total sequenced reads versus target coverage",
+               par.settings=simpleTheme(pch=19, col=cpal.out),
+               auto.key=list(space="right"),
+               groups = label.outliers(cbind(PCT_TARGET_BASES_10X, x$TOTAL_READS), x$SAMPLE_ID)
+               )
+        )
     
     ## Arrange data for basewise coverage plots
     cov.levels <- c("2X", "10X", "20X", "30X", "40X", "50X", "100X")
@@ -142,7 +142,7 @@ hs <- function(y) {
     print(
         bwplot(100*values ~ ind , data=x.st,
                par.settings=simpleTheme(pch=19, col=cpal.out),
-               xlab="Coverage", ylab="Percent of targeted bases", main="Percentage bases with a given coverage",
+               xlab="Coverage", ylab="Percent of targeted bases", main="Coverage of targeted bases",
                scales=(list(x=list(rot=45))), ylim=ylim,
                )
         )
@@ -177,11 +177,12 @@ hs <- function(y) {
 align <- function(y) {
 
     ## Fix order of category factor levels
-    if(all(levels(y$CATEGORY) == c("FIRST_OF_PAIR", "PAIR", "SECOND_OF_PAIR"))) 
-        y$CATEGORY <- factor(y$CATEGORY, levels=c("FIRST_OF_PAIR", "SECOND_OF_PAIR", "PAIR"))
+    stopifnot(all(levels(y$CATEGORY) == c("FIRST_OF_PAIR", "PAIR", "SECOND_OF_PAIR")))
+    levels(y$CATEGORY) <- c("Read 1", "Pair", "Read 2") # Rename levels
+    y$CATEGORY <- factor(y$CATEGORY, levels=c("Read 1", "Read 2", "Pair")) # Reorder levels
   
     ## Sample-based plots
-    x <- y[is.na(y$FLOWCELL) & y$CATEGORY=="PAIR",]
+    x <- y[is.na(y$FLOWCELL) & y$CATEGORY=="Pair",]
     x <- x[order(x$SAMPLE_ID),]
 
     print(
