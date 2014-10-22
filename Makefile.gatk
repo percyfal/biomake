@@ -124,7 +124,7 @@ endif
 # Variant evaluation
 ##############################
 ifndef GATK_VARIANT_EVAL_OPTIONS
-GATK_VARIANT_EVAL_OPTIONS=-ST Filter -l INFO --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
+GATK_VARIANT_EVAL_OPTIONS=-ST Filter --doNotUseAllStandardModules --evalModule CompOverlap --evalModule CountVariants --evalModule GenotypeConcordance --evalModule TiTvVariantEvaluator --evalModule ValidationReport --stratificationModule Filter
 endif
 ifneq ($(GATK_DBSNP),)
 GATK_VARIANT_EVAL_OPTIONS+=--dbsnp $(GATK_DBSNP)

@@ -7,6 +7,10 @@ ifndef MAKE
 MAKE=make
 endif
 
+# Define variable representing space character (for use in subst calls)
+SPACE_CHAR :=
+SPACE_CHAR +=
+
 # Utility programs
 ifndef AWK
 AWK=awk

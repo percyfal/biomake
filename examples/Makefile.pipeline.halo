@@ -7,18 +7,25 @@
 # NB: account must be set, all other variables have defaults which may
 # or may not do what you want
 # SLURM_ACCOUNT=
+# SLURM_MAILUSER=your.email@host
 # SLURM_WORKDIR=
-# SLURM_TIME=01:00:00
-# SLURM_PARTITION=devel
-# SLURM_MAILUSER=
-# SLURM_MAKE_J=4
+# SLURM_TIME=24:00:00
+# SLURM_CLUSTER=
+# SLURM_PARTITION=node
+# SLURM_N_CORES=16
+# SLURM_MAKE_J=16
 # SLURM_MAKE_OPTIONS=-k
 # SLURM_MODULES=bioinfo-tools samtools/0.1.19 picard/1.92 cutadapt/1.2.1 bwa/0.7.5a GATK/2.7.2
 # SLURM_PREHOOK=
 
 # Change if naming scheme is different from SciLife production names
+# READ1_LABEL=_1
+# READ2_LABEL=_2
 # SAMPLE_PREFIX=P00
-#
+
+# Number of threads to use for multi-threaded jobs
+# THREADS = 1
+# See also SLURM_MAKE_J and SLURM_N_CORES above (for number of simultanous jobs and total cores, respectively) 
 
 # Uncomment these if specific samples/flowcells should be run.
 # Alternatively, one may have to list all the samples if they begin
@@ -27,16 +34,31 @@
 # NB: flowcells not yet implemented
 # FLOWCELLS:=flowcell1 flowcell2 etc
 
-# Set to bed/interval_list file that defines targets and baits
-# TARGET_REGIONS=
-# BAIT_REGIONS=
+# Set to interval_list files that define targets and baits.
+# The GATK target regions file is used e.g. in genotyping,
+# realignment, and base recalibration.
+# The Picard target and bait files are used for QC metrics.
+# For HaloPlex, the design file selection.gff (converted to
+# interval_list format) can be used for both target and bait.
+# This file lists the expected amplicons.
+# GATK_TARGET_REGIONS = /path/selection.list
+# PICARD_TARGET_REGIONS := $(GATK_TARGET_REGIONS)
+# PICARD_BAIT_REGIONS := $(GATK_TARGET_REGIONS)
 
-# Set to dbsnp database of choice
-# DBSNP=
+# Databases of known polymorphisms
+# GATK_BUNDLE = /path/to/gatk/bundle/ver/hg19
+# DBSNP := $(GATK_BUNDLE)/dbsnp_138.hg19.vcf
+# KNOWN_INDELS := $(GATK_BUNDLE)/Mills_and_1000G_gold_standard.indels.hg19.vcf $(GATK_BUNDLE)/1000G_phase1.indels.hg19.vcf
+
+# Known sites to use in base quality score recalibration
+# GATK_KNOWN_SITES := $(DBSNP) $(KNOWN_INDELS)
 
 # Search paths for GATK and picard needed
 # GATK_HOME=
 # PICARD_HOME=
+
+# Additional prerequisite resyncMates.pl
+# RESYNCMATES=/path/to/resyncMates.pl
 
 # Sequence reference file and BWA index prefix
 # REF=
@@ -46,6 +68,16 @@
 # at will. An example follows:
 
 # GATK_UNIFIEDGENOTYPER_OPTIONS=-stand_call_conf 30.0 -stand_emit_conf 10.0  --downsample_to_coverage 100 --output_mode EMIT_VARIANTS_ONLY -glm BOTH -nt $(GATK_THREADS) -R $(GATK_REF)
+
+# Below are some useful additions to option strings
+
+# Suppress information messages from GATK and Picard (otherwise output is very verbose)
+# GATK_COMMAND += -l ERROR
+# PICARD_OPTIONS_COMMON += VERBOSITY=ERROR QUIET=true
+
+# Supply files with known indels to RealignerTargetCreator and IndelRealigner
+# GATK_REALIGN_TARGET_CREATOR_OPTIONS += $(addprefix -known ,$(KNOWN_INDELS))
+# GATK_INDELREALIGNER_OPTIONS += $(addprefix -known ,$(KNOWN_INDELS))
 
 
 ##############################
